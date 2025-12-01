@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from './pathUtils.js';
 import { DevelopmentContext } from './generateInstructions.js';
 
 /**
@@ -24,7 +25,7 @@ export interface HistoryDetail extends HistoryEntry {
  * Get history directory path
  */
 function getHistoryDir(): string {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   return path.join(workspaceRoot, '.copilot-state/history');
 }
 

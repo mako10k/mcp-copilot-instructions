@@ -4,10 +4,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getWorkspaceRoot } from '../../src/utils/pathUtils.js';
 
 export interface TestContext {
   workspaceRoot: string;
@@ -17,7 +14,7 @@ export interface TestContext {
 }
 
 export async function createTestContext(): Promise<TestContext> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const instructionsDir = path.join(workspaceRoot, '.copilot-instructions');
   const stateDir = path.join(workspaceRoot, '.copilot-state');
   const instructionsPath = path.join(workspaceRoot, '.github/copilot-instructions.md');

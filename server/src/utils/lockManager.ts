@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from './pathUtils.js';
 
 /**
  * Lock information
@@ -18,7 +19,7 @@ const RETRY_INTERVAL_MS = 100; // 100ms
  * Get lock file path
  */
 function getLockFilePath(): string {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   return path.join(workspaceRoot, LOCK_FILE);
 }
 

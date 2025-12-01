@@ -59,25 +59,24 @@ jobs:
           test -d dist/src/utils
           test -d dist/tests
 
-  # test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: server/package-lock.json
-  #     
-  #     - name: Install dependencies
-  #       run: |
-  #         cd server
-  #         npm ci
-  #     
-  #     - name: Run tests
-  #       run: |
-  #         cd server
-  #         npm test
-  # TODO: Enable after fixing __dirname ESM compatibility issues
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd server
+          npm ci
+      
+      - name: Run tests
+        run: |
+          cd server
+          npm test

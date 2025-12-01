@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from './pathUtils.js';
 
 export interface ProjectContext {
   id: string;
@@ -16,7 +17,7 @@ export interface ProjectContext {
  * プロジェクト文脈を保存するJSONファイルのパス
  */
 function getContextsFilePath(): string {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   return path.join(workspaceRoot, '.copilot-context/contexts.json');
 }
 

@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from './pathUtils.js';
 import matter from 'gray-matter';
 import { calculateHash } from '../utils/fileSystem.js';
 import { recordHistory } from './historyManager.js';
@@ -58,7 +59,7 @@ interface ScoringRules {
  * Load scoring rules
  */
 async function loadScoringRules(): Promise<ScoringRules> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const rulesPath = path.join(workspaceRoot, '.copilot-state/scoring-rules.json');
   
   try {
@@ -86,7 +87,7 @@ async function loadScoringRules(): Promise<ScoringRules> {
  * Load all Markdown files in .copilot-instructions/
  */
 async function loadAllInstructions(): Promise<ParsedInstruction[]> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const instructionsDir = path.join(workspaceRoot, '.copilot-instructions');
   
   const instructions: ParsedInstruction[] = [];
@@ -246,8 +247,9 @@ export async function generateInstructions(context: DevelopmentContext): Promise
   
   for (const instruction of selectedInstructions) {
     const category = instruction.metadata.category;
+    const workspaceRoot = getWorkspaceRoot(import.meta.url);
     const relativePath = path.relative(
-      path.resolve(__dirname, '../../../.copilot-instructions'),
+      path.join(workspaceRoot, '.copilot-instructions'),
       instruction.filePath
     );
     
@@ -257,7 +259,7 @@ export async function generateInstructions(context: DevelopmentContext): Promise
   }
   
   // .github/copilot-instructions.md に書き込み
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const outputPath = path.join(workspaceRoot, '.github/copilot-instructions.md');
   
   await fs.writeFile(outputPath, markdown, 'utf-8');

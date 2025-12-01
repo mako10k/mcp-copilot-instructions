@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { getWorkspaceRoot } from './pathUtils.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -165,8 +166,8 @@ export async function getGitDiff(filePath: string): Promise<string | undefined> 
  * @returns Instructions content, null if doesn't exist
  */
 export async function readInstructionsFile(): Promise<string | null> {
-  // Resolve workspace root relative to __dirname
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  // Resolve workspace root
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
   try {
     return await fs.readFile(filePath, 'utf-8');
@@ -220,7 +221,7 @@ export async function readInstructionsFileWithState(): Promise<{
   content: string;
   state: FileState;
 } | null> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
   
   try {
@@ -268,8 +269,8 @@ export async function writeWithConflictCheck(
  * @param content 指示書の内容
  */
 export async function writeInstructionsFile(content: string): Promise<void> {
-  // __dirnameから相対的にワークスペースルートを解決
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  // ワークスペースルートを解決
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, content, 'utf-8');
@@ -285,7 +286,7 @@ export async function writeInstructionsFileWithConflictCheck(
   content: string,
   expectedState: FileState
 ): Promise<{ success: boolean; conflict?: ConflictInfo }> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   return writeWithConflictCheck(filePath, content, expectedState);

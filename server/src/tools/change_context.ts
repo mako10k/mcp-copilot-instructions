@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from '../utils/pathUtils.js';
 import { DevelopmentContext, generateInstructions } from '../utils/generateInstructions.js';
 import { 
   listHistory, 
@@ -28,7 +29,7 @@ interface ChangeContextArgs {
  * Load current context
  */
 async function loadContext(): Promise<DevelopmentContext> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const contextPath = path.join(workspaceRoot, '.copilot-state/context.json');
   
   try {
@@ -49,7 +50,7 @@ async function loadContext(): Promise<DevelopmentContext> {
  * Save context
  */
 async function saveContext(context: DevelopmentContext): Promise<void> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const contextPath = path.join(workspaceRoot, '.copilot-state/context.json');
   
   await fs.writeFile(contextPath, JSON.stringify(context, null, 2), 'utf-8');
@@ -198,7 +199,7 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
     await saveContext(historyEntry.context);
     
     // Restore .github/copilot-instructions.md
-    const workspaceRoot = path.resolve(__dirname, '../../../');
+    const workspaceRoot = getWorkspaceRoot(import.meta.url);
     const outputPath = path.join(workspaceRoot, '.github/copilot-instructions.md');
     await fs.writeFile(outputPath, historyEntry.generatedContent, 'utf-8');
     

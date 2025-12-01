@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from '../utils/pathUtils.js';
 import matter from 'gray-matter';
 
 interface ScoringRules {
@@ -38,7 +39,7 @@ async function updateInstructionFrontmatter(
   value: boolean,
   reason?: string
 ): Promise<void> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const fullPath = path.join(workspaceRoot, '.copilot-instructions', filePath);
   
   // Read file
@@ -65,7 +66,7 @@ async function updateInstructionFrontmatter(
  * Load scoring rules
  */
 async function loadScoringRules(): Promise<ScoringRules> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const rulesPath = path.join(workspaceRoot, '.copilot-state/scoring-rules.json');
   const content = await fs.readFile(rulesPath, 'utf-8');
   return JSON.parse(content);
@@ -75,7 +76,7 @@ async function loadScoringRules(): Promise<ScoringRules> {
  * Scan all instruction files and retrieve feedback information
  */
 async function listFeedbacks(filter: 'criticalFeedback' | 'copilotEssential' | 'all'): Promise<FeedbackEntry[]> {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const instructionsDir = path.join(workspaceRoot, '.copilot-instructions');
   
   const feedbacks: FeedbackEntry[] = [];
