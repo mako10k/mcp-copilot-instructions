@@ -23,10 +23,15 @@ import {
   createInitialContext,
   filterGoals
 } from '../utils/goalStorage.js';
+import {
+  analyzeDependencies,
+  calculatePriorities,
+  reorderGoalsByDependencies
+} from '../utils/dependencyGraph.js';
 
 // Zod schema for parameter validation
 const goalManagementSchema = z.object({
-  action: z.enum(['create', 'read', 'update', 'delete', 'complete', 'advance', 'get-context', 'set-current']),
+  action: z.enum(['create', 'read', 'update', 'delete', 'complete', 'advance', 'get-context', 'set-current', 'analyze-dependencies', 'calculate-priorities', 'reorder']),
   goalId: z.string().optional(),
   goal: z.object({
     title: z.string(),
@@ -34,7 +39,10 @@ const goalManagementSchema = z.object({
     parentId: z.string().optional(),
     order: z.number().optional(),
     dependencies: z.array(z.string()).optional(),
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    contributionWeight: z.number().optional(),
+    estimatedEffort: z.number().optional(),
+    manualPriority: z.number().optional()
   }).optional(),
   status: z.enum(['not-started', 'in-progress', 'completed', 'blocked']).optional(),
   filter: z.object({
@@ -187,8 +195,23 @@ async function createGoal(params: GoalManagementParams): Promise<GoalManagementR
     createdAt: now,
     updatedAt: now,
     dependencies: params.goal.dependencies,
-    notes: params.goal.notes
+    dependents: [],
+    notes: params.goal.notes,
+    contributionWeight: params.goal.contributionWeight,
+    estimatedEffort: params.goal.estimatedEffort,
+    manualPriority: params.goal.manualPriority
   };
+  
+  // Update reverse dependencies
+  if (params.goal.dependencies) {
+    params.goal.dependencies.forEach(depId => {
+      const dep = hierarchy.goals[depId];
+      if (dep) {
+        if (!dep.dependents) dep.dependents = [];
+        dep.dependents.push(goalId);
+      }
+    });
+  }
   
   // Add to hierarchy
   hierarchy.goals[goalId] = newGoal;
@@ -651,6 +674,129 @@ async function deleteGoal(params: GoalManagementParams): Promise<GoalManagementR
 }
 
 /**
+ * Analyze dependencies
+ */
+async function analyzeDependenciesAction(): Promise<GoalManagementResult> {
+  const hierarchy = await readHierarchy();
+  if (!hierarchy) {
+    return {
+      success: false,
+      message: 'Goals not initialized',
+      error: 'Hierarchy file missing'
+    };
+  }
+  
+  try {
+    const analysis = analyzeDependencies(hierarchy);
+    
+    let message = `Dependency analysis complete:\n`;
+    message += `- Execution order: ${analysis.executionOrder.length} goals\n`;
+    message += `- Circular dependencies: ${analysis.circularDependencies.length}\n`;
+    message += `- Blocked goals: ${analysis.blockedGoals.length}\n`;
+    message += `- Ready goals: ${analysis.readyGoals.length}`;
+    
+    if (analysis.circularDependencies.length > 0) {
+      message += `\n\n⚠️ Warning: Circular dependencies detected:\n`;
+      analysis.circularDependencies.forEach((cycle, i) => {
+        message += `  ${i + 1}. ${cycle.join(' → ')}\n`;
+      });
+    }
+    
+    return {
+      success: true,
+      message,
+      dependencyAnalysis: analysis
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Dependency analysis failed',
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Calculate priorities
+ */
+async function calculatePrioritiesAction(): Promise<GoalManagementResult> {
+  const hierarchy = await readHierarchy();
+  if (!hierarchy) {
+    return {
+      success: false,
+      message: 'Goals not initialized',
+      error: 'Hierarchy file missing'
+    };
+  }
+  
+  try {
+    const priorities = calculatePriorities(hierarchy);
+    
+    // Update goals with calculated priorities
+    priorities.forEach(calc => {
+      const goal = hierarchy.goals[calc.goalId];
+      if (goal) {
+        goal.calculatedPriority = calc.priority;
+      }
+    });
+    
+    await writeHierarchy(hierarchy);
+    
+    let message = `Priority calculation complete:\n`;
+    message += `Top 5 priorities:\n`;
+    priorities.slice(0, 5).forEach((calc, i) => {
+      const goal = hierarchy.goals[calc.goalId];
+      message += `  ${i + 1}. ${goal.title} (${calc.priority} points)\n`;
+      message += `     - Contribution: ${(calc.contributionToUltimate * 100).toFixed(1)}%\n`;
+      message += `     - Dependents: ${calc.dependentCount}\n`;
+      message += `     - Critical path: ${calc.onCriticalPath ? 'Yes' : 'No'}\n`;
+    });
+    
+    return {
+      success: true,
+      message,
+      priorityCalculations: priorities
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Priority calculation failed',
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Reorder goals based on dependencies
+ */
+async function reorderAction(): Promise<GoalManagementResult> {
+  const hierarchy = await readHierarchy();
+  if (!hierarchy) {
+    return {
+      success: false,
+      message: 'Goals not initialized',
+      error: 'Hierarchy file missing'
+    };
+  }
+  
+  try {
+    reorderGoalsByDependencies(hierarchy);
+    await writeHierarchy(hierarchy);
+    
+    return {
+      success: true,
+      message: 'Goals reordered based on dependency graph'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Reorder failed',
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
  * Main tool handler
  */
 export async function handleGoalManagement(params: unknown): Promise<GoalManagementResult> {
@@ -682,6 +828,15 @@ export async function handleGoalManagement(params: unknown): Promise<GoalManagem
       case 'set-current':
         return await setCurrentGoal(validated);
       
+      case 'analyze-dependencies':
+        return await analyzeDependenciesAction();
+      
+      case 'calculate-priorities':
+        return await calculatePrioritiesAction();
+      
+      case 'reorder':
+        return await reorderAction();
+      
       default:
         return {
           success: false,
@@ -700,6 +855,6 @@ export async function handleGoalManagement(params: unknown): Promise<GoalManagem
 
 export const goalManagementTool = {
   name: 'goal_management',
-  description: 'Manage hierarchical goals and track progress. Supports create, read, update, delete, complete, advance, get-context, and set-current actions.',
+  description: 'Manage hierarchical goals and track progress. Supports create, read, update, delete, complete, advance, get-context, set-current, analyze-dependencies, calculate-priorities, and reorder actions. Includes dependency graph analysis and automatic priority calculation.',
   inputSchema: goalManagementSchema
 };

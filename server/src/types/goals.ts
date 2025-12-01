@@ -33,7 +33,7 @@ export interface Goal {
   /** Array of child goal IDs */
   childIds: string[];
   
-  /** Order within siblings (for sorting) */
+  /** Order within siblings (auto-calculated from dependencies) */
   order: number;
   
   /** Creation timestamp (ISO 8601) */
@@ -48,8 +48,26 @@ export interface Goal {
   /** Additional notes */
   notes?: string;
   
-  /** IDs of goals that must be completed first */
+  /** IDs of goals that must be completed first (dependency graph) */
   dependencies?: string[];
+  
+  /** Goals that depend on this goal (reverse dependencies) */
+  dependents?: string[];
+  
+  /** Calculated priority based on contribution to parent (0-100) */
+  calculatedPriority?: number;
+  
+  /** Manual priority override (0-100) */
+  manualPriority?: number;
+  
+  /** Contribution weight to parent goal (0-1, default 1) */
+  contributionWeight?: number;
+  
+  /** Estimated effort (in hours) */
+  estimatedEffort?: number;
+  
+  /** Actual effort spent (in hours) */
+  actualEffort?: number;
 }
 
 /**
@@ -119,10 +137,50 @@ export interface FilteredGoals {
 }
 
 /**
+ * Dependency graph analysis result
+ */
+export interface DependencyAnalysis {
+  /** Topologically sorted goal IDs (safe execution order) */
+  executionOrder: string[];
+  
+  /** Detected circular dependencies */
+  circularDependencies: string[][];
+  
+  /** Goals with unmet dependencies */
+  blockedGoals: string[];
+  
+  /** Goals ready to start (no unmet dependencies) */
+  readyGoals: string[];
+}
+
+/**
+ * Priority calculation result
+ */
+export interface PriorityCalculation {
+  /** Goal ID */
+  goalId: string;
+  
+  /** Calculated priority (0-100) */
+  priority: number;
+  
+  /** Contribution to ultimate goal (0-1) */
+  contributionToUltimate: number;
+  
+  /** Depth from ultimate goal */
+  depth: number;
+  
+  /** Number of dependent goals */
+  dependentCount: number;
+  
+  /** Critical path indicator */
+  onCriticalPath: boolean;
+}
+
+/**
  * Goal management tool parameters
  */
 export interface GoalManagementParams {
-  action: 'create' | 'read' | 'update' | 'delete' | 'complete' | 'advance' | 'get-context' | 'set-current';
+  action: 'create' | 'read' | 'update' | 'delete' | 'complete' | 'advance' | 'get-context' | 'set-current' | 'analyze-dependencies' | 'calculate-priorities' | 'reorder';
   
   /** Goal ID (for read, update, delete, complete, set-current) */
   goalId?: string;
@@ -135,6 +193,9 @@ export interface GoalManagementParams {
     order?: number;
     dependencies?: string[];
     notes?: string;
+    contributionWeight?: number;
+    estimatedEffort?: number;
+    manualPriority?: number;
   };
   
   /** New status (for update) */
@@ -166,6 +227,12 @@ export interface GoalManagementResult {
   
   /** Current context (for complete, advance, set-current) */
   currentContext?: CurrentContext;
+  
+  /** Dependency analysis (for analyze-dependencies) */
+  dependencyAnalysis?: DependencyAnalysis;
+  
+  /** Priority calculations (for calculate-priorities) */
+  priorityCalculations?: PriorityCalculation[];
   
   /** Error details if failed */
   error?: string;

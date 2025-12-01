@@ -279,18 +279,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'goal_management',
         description:
-          'Manage hierarchical goals and track progress. Create main goal and sub-goals, ' +
-          'mark completion with auto-advancement, get filtered context for instructions.',
+          'Manage hierarchical goals with dependency graph analysis and automatic priority calculation. ' +
+          'Create goals with dependencies, analyze execution order, calculate priorities based on contribution.',
         inputSchema: {
           type: 'object',
           properties: {
             action: {
               type: 'string',
-              enum: ['create', 'read', 'update', 'delete', 'complete', 'advance', 'get-context', 'set-current'],
+              enum: ['create', 'read', 'update', 'delete', 'complete', 'advance', 'get-context', 'set-current', 'analyze-dependencies', 'calculate-priorities', 'reorder'],
               description:
                 'Action: create(create goal) / read(read goal) / update(update goal) / delete(delete goal) / ' +
                 'complete(complete goal and auto-advance) / advance(manually advance to goal) / ' +
-                'get-context(get filtered goals) / set-current(set current goal)',
+                'get-context(get filtered goals) / set-current(set current goal) / ' +
+                'analyze-dependencies(analyze dependency graph) / calculate-priorities(calculate priorities) / reorder(reorder by dependencies)',
             },
             goalId: {
               type: 'string',
@@ -318,11 +319,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 dependencies: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Goal IDs that must be completed first',
+                  description: 'Goal IDs that must be completed first (creates dependency edges)',
                 },
                 notes: {
                   type: 'string',
                   description: 'Additional notes',
+                },
+                contributionWeight: {
+                  type: 'number',
+                  description: 'Contribution weight to parent goal (0-1, default 1)',
+                },
+                estimatedEffort: {
+                  type: 'number',
+                  description: 'Estimated effort in hours',
+                },
+                manualPriority: {
+                  type: 'number',
+                  description: 'Manual priority override (0-100)',
                 },
               },
               required: ['title', 'description'],
