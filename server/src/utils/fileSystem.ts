@@ -7,6 +7,33 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 /**
+ * Git コマンドの利用可否状態
+ * undefined: 未チェック, true: 利用可能, false: 利用不可
+ */
+let gitAvailable: boolean | undefined = undefined;
+
+/**
+ * Git コマンドが利用可能かチェック
+ * 初回呼び出し時に検証し、結果をキャッシュ
+ */
+async function checkGitAvailable(): Promise<boolean> {
+  if (gitAvailable !== undefined) {
+    return gitAvailable;
+  }
+
+  try {
+    await execAsync('git --version');
+    gitAvailable = true;
+    console.log('[fileSystem] Git コマンド利用可能');
+  } catch {
+    gitAvailable = false;
+    console.warn('[fileSystem] Git コマンドが見つかりません。デグレードモードで動作します。');
+  }
+
+  return gitAvailable;
+}
+
+/**
  * ファイルの状態を表すインターフェース
  */
 export interface FileState {
@@ -41,6 +68,11 @@ function calculateHash(content: string): string {
  * @returns Git管理下の場合true
  */
 export async function checkGitManaged(filePath: string): Promise<boolean> {
+  // Git コマンドが利用不可の場合は false を返す
+  if (!(await checkGitAvailable())) {
+    return false;
+  }
+
   try {
     const dir = path.dirname(filePath);
     // git rev-parse --is-inside-work-tree でGitリポジトリ内かチェック
@@ -54,9 +86,14 @@ export async function checkGitManaged(filePath: string): Promise<boolean> {
 /**
  * Git管理下のファイルの現在のコミットハッシュを取得
  * @param filePath ファイルのパス
- * @returns コミットハッシュ、取得できない場合はundefined
+ * @returns コミットハッシュ、取得できない場合undefined
  */
 export async function getGitCommit(filePath: string): Promise<string | undefined> {
+  // Git コマンドが利用不可の場合は undefined を返す
+  if (!(await checkGitAvailable())) {
+    return undefined;
+  }
+
   try {
     const dir = path.dirname(filePath);
     const { stdout } = await execAsync('git rev-parse HEAD', { cwd: dir });
@@ -72,6 +109,11 @@ export async function getGitCommit(filePath: string): Promise<string | undefined
  * @returns ステータス文字列 (modified, untracked, unmodified等)、取得できない場合はundefined
  */
 export async function getGitStatus(filePath: string): Promise<string | undefined> {
+  // Git コマンドが利用不可の場合は undefined を返す
+  if (!(await checkGitAvailable())) {
+    return undefined;
+  }
+
   try {
     const dir = path.dirname(filePath);
     const fileName = path.basename(filePath);
@@ -100,9 +142,14 @@ export async function getGitStatus(filePath: string): Promise<string | undefined
 /**
  * Git管理下のファイルのdiffを取得
  * @param filePath ファイルのパス
- * @returns diff内容、取得できない場合はundefined
+ * @returns diff内容、取得できない場合undefined
  */
 export async function getGitDiff(filePath: string): Promise<string | undefined> {
+  // Git コマンドが利用不可の場合は undefined を返す
+  if (!(await checkGitAvailable())) {
+    return undefined;
+  }
+
   try {
     const dir = path.dirname(filePath);
     const fileName = path.basename(filePath);

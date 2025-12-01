@@ -950,6 +950,72 @@ case 'resolve-conflict': {
 
 ### その後のステップ
 
-- **Step 2**: Git状態確認機能（.git存在チェック、git status連携）
+- **Step 2**: Git状態確認機能（.git存在チェック、git status連携） ✅ 完了
 - **Step 3**: 競合時の詳細diff表示（3-way view）
 - **Step 4**: 複数Copilotセッション間の排他制御
+
+---
+
+## 追加改善: Git デグレードモード (2025-12-01)
+
+### 概要
+Gitコマンドが利用できない環境でも安全に動作するよう、起動時の存在チェックとデグレードモード機能を追加。
+
+### 実装内容
+
+#### Git コマンド存在チェック
+```typescript
+// fileSystem.ts
+let gitAvailable: boolean | undefined = undefined;
+
+async function checkGitAvailable(): Promise<boolean> {
+  if (gitAvailable !== undefined) return gitAvailable;
+  
+  try {
+    await execAsync('git --version');
+    gitAvailable = true;
+    console.log('[fileSystem] Git コマンド利用可能');
+  } catch {
+    gitAvailable = false;
+    console.warn('[fileSystem] Git コマンドが見つかりません。デグレードモードで動作します。');
+  }
+  
+  return gitAvailable;
+}
+```
+
+#### 全Git関数での統一チェック
+- `checkGitManaged()` 
+- `getGitCommit()`
+- `getGitStatus()`
+- `getGitDiff()`
+
+各関数の冒頭で `checkGitAvailable()` を呼び出し、利用不可の場合は早期リターン。
+
+### デグレードモード動作
+| 項目 | 通常モード | デグレードモード |
+|------|----------|----------------|
+| ファイル読み書き | ✓ | ✓ |
+| ハッシュ計算 | ✓ | ✓ |
+| 競合検知 | ✓ | ✓ |
+| `isGitManaged` | true/false | false |
+| `gitCommit` | コミットハッシュ | undefined |
+| `gitStatus` | modified等 | undefined |
+| `gitDiff` | 差分内容 | undefined |
+
+### メリット
+- Docker等の軽量環境で動作可能
+- Gitがインストールされていない環境でも利用可能
+- エラーでクラッシュせず、グレースフルに機能縮退
+- コアの競合検知機能（ハッシュベース）は引き続き機能
+
+### テスト結果
+✅ 通常モードでの動作確認  
+✅ Git情報なしモード（includeGitInfo=false）  
+✅ readInstructionsFileWithState  
+✅ デグレードモード動作確認  
+
+### 成果
+- 環境依存性の軽減
+- より広い環境での利用可能性
+- ロバスト性の向上
