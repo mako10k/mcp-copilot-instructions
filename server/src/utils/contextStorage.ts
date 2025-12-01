@@ -51,7 +51,7 @@ export async function saveContexts(contexts: ProjectContext[]): Promise<void> {
  * @returns 作成された文脈
  */
 export function createContext(
-  data: Omit<ProjectContext, 'id' | 'createdAt' | 'updatedAt'>
+  data: Omit<ProjectContext, 'id' | 'createdAt' | 'updatedAt'>,
 ): ProjectContext {
   const now = new Date().toISOString();
   return {
@@ -70,7 +70,7 @@ export function createContext(
  */
 export async function updateContext(
   id: string,
-  updates: Partial<Omit<ProjectContext, 'id' | 'createdAt' | 'updatedAt'>>
+  updates: Partial<Omit<ProjectContext, 'id' | 'createdAt' | 'updatedAt'>>,
 ): Promise<boolean> {
   const contexts = await loadContexts();
   const index = contexts.findIndex((ctx) => ctx.id === id);
@@ -132,11 +132,17 @@ export async function filterContexts(filters: {
       }
     }
 
-    if (filters.minPriority !== undefined && ctx.priority < filters.minPriority) {
+    if (
+      filters.minPriority !== undefined &&
+      ctx.priority < filters.minPriority
+    ) {
       return false;
     }
 
-    if (filters.maxPriority !== undefined && ctx.priority > filters.maxPriority) {
+    if (
+      filters.maxPriority !== undefined &&
+      ctx.priority > filters.maxPriority
+    ) {
       return false;
     }
 

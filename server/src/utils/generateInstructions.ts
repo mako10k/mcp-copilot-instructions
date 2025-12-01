@@ -11,8 +11,13 @@ import { formatGoalsSection } from './goalStorage.js';
  * Development context (state)
  */
 export interface DevelopmentContext {
-  phase: 'development' | 'refactoring' | 'testing' | 'debugging' | 'documentation';
-  focus: string[];  // Current focus (e.g., ["API auth", "JWT"])
+  phase:
+    | 'development'
+    | 'refactoring'
+    | 'testing'
+    | 'debugging'
+    | 'documentation';
+  focus: string[]; // Current focus (e.g., ["API auth", "JWT"])
   priority: 'high' | 'medium' | 'low';
   mode: 'normal' | 'strict' | 'experimental';
 }
@@ -60,8 +65,11 @@ interface ScoringRules {
  */
 async function loadScoringRules(): Promise<ScoringRules> {
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
-  const rulesPath = path.join(workspaceRoot, '.copilot-state/scoring-rules.json');
-  
+  const rulesPath = path.join(
+    workspaceRoot,
+    '.copilot-state/scoring-rules.json',
+  );
+
   try {
     const content = await fs.readFile(rulesPath, 'utf-8');
     const data = JSON.parse(content);
@@ -89,22 +97,22 @@ async function loadScoringRules(): Promise<ScoringRules> {
 async function loadAllInstructions(): Promise<ParsedInstruction[]> {
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const instructionsDir = path.join(workspaceRoot, '.copilot-instructions');
-  
+
   const instructions: ParsedInstruction[] = [];
-  
+
   async function scanDirectory(dir: string): Promise<void> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      
+
       if (entry.isDirectory()) {
         await scanDirectory(fullPath);
       } else if (entry.isFile() && entry.name.endsWith('.md')) {
         try {
           const content = await fs.readFile(fullPath, 'utf-8');
           const parsed = matter(content);
-          
+
           instructions.push({
             filePath: fullPath,
             metadata: parsed.data as InstructionMetadata,
@@ -116,13 +124,13 @@ async function loadAllInstructions(): Promise<ParsedInstruction[]> {
       }
     }
   }
-  
+
   try {
     await scanDirectory(instructionsDir);
   } catch (error) {
     console.error('Failed to load instructions:', error);
   }
-  
+
   return instructions;
 }
 
@@ -132,46 +140,49 @@ async function loadAllInstructions(): Promise<ParsedInstruction[]> {
 function calculateRelevanceScore(
   instruction: ParsedInstruction,
   context: DevelopmentContext,
-  rules: ScoringRules
+  rules: ScoringRules,
 ): number {
   let score = 0;
   const { metadata } = instruction;
-  
+
   // 特殊フラグ（最優先）
   if (metadata.required) score += rules.required;
   if (metadata.criticalFeedback) score += rules.criticalFeedback;
   if (metadata.copilotEssential) score += rules.copilotEssential;
-  
+
   // フェーズマッチ
   if (metadata.phases && metadata.phases.includes(context.phase)) {
     score += rules.phaseMatch;
   }
-  
+
   // フォーカスキーワードマッチ
   for (const focusItem of context.focus) {
     const lowerFocus = focusItem.toLowerCase();
-    
+
     // タグマッチ
-    if (metadata.tags && metadata.tags.some(tag => tag.toLowerCase().includes(lowerFocus))) {
+    if (
+      metadata.tags &&
+      metadata.tags.some((tag) => tag.toLowerCase().includes(lowerFocus))
+    ) {
       score += rules.tagMatch;
     }
-    
+
     // ファイルパスマッチ
     if (instruction.filePath.toLowerCase().includes(lowerFocus)) {
       score += rules.filePathMatch;
     }
-    
+
     // コンテンツマッチ（キーワードが本文に含まれる）
     if (instruction.content.toLowerCase().includes(lowerFocus)) {
       score += rules.focusKeywordMatch;
     }
   }
-  
+
   // 優先度による加算
   if (metadata.priority === 'high') score += rules.priorityHigh;
   if (metadata.priority === 'medium') score += rules.priorityMedium;
   if (metadata.priority === 'low') score += rules.priorityLow;
-  
+
   return score;
 }
 
@@ -179,47 +190,51 @@ function calculateRelevanceScore(
  * 関連する指示を選択
  */
 async function selectRelevantInstructions(
-  context: DevelopmentContext
+  context: DevelopmentContext,
 ): Promise<ParsedInstruction[]> {
   const rules = await loadScoringRules();
   const allInstructions = await loadAllInstructions();
-  
+
   // 必須指示を先に抽出
-  const required = allInstructions.filter(inst => inst.metadata.required === true);
-  const optional = allInstructions.filter(inst => !inst.metadata.required);
-  
+  const required = allInstructions.filter(
+    (inst) => inst.metadata.required === true,
+  );
+  const optional = allInstructions.filter((inst) => !inst.metadata.required);
+
   // 任意指示をスコアリング
-  const scored = optional.map(instruction => ({
+  const scored = optional.map((instruction) => ({
     instruction,
     score: calculateRelevanceScore(instruction, context, rules),
   }));
-  
+
   // スコア順にソート
   scored.sort((a, b) => b.score - a.score);
-  
+
   // 上限: maxSections (デフォルト10)
   const maxSections = 10;
   const optionalSelected = scored
-    .filter(s => s.score > 3)  // 閾値
+    .filter((s) => s.score > 3) // 閾値
     .slice(0, maxSections - required.length)
-    .map(s => s.instruction);
-  
+    .map((s) => s.instruction);
+
   return [...required, ...optionalSelected];
 }
 
 /**
  * Generate .github/copilot-instructions.md
  */
-export async function generateInstructions(context: DevelopmentContext): Promise<{
+export async function generateInstructions(
+  context: DevelopmentContext,
+): Promise<{
   success: boolean;
   sectionsCount: number;
   generatedHash: string;
 }> {
   const selectedInstructions = await selectRelevantInstructions(context);
-  
+
   // Generate meta-instruction
   const metaInstruction = generateFullMetaInstruction(context);
-  
+
   // Get goal section (if goals are initialized)
   let goalsSection = '';
   try {
@@ -228,47 +243,50 @@ export async function generateInstructions(context: DevelopmentContext): Promise
     // Goals not initialized yet, skip
     console.error('Goals not initialized:', error);
   }
-  
+
   // Generate Markdown
   let markdown = `# Copilot Instructions\n\n`;
   markdown += `<!-- Auto-generated by mcp-copilot-instructions -->\n`;
   markdown += `<!-- Context: phase=${context.phase}, focus=${context.focus.join(', ')} -->\n`;
   markdown += `<!-- Generated: ${new Date().toISOString()} -->\n\n`;
-  
+
   // Insert meta-instruction at the top
   markdown += `${metaInstruction}\n\n`;
   markdown += `---\n\n`;
-  
+
   // Insert goals section if available
   if (goalsSection) {
     markdown += `${goalsSection}\n`;
     markdown += `---\n\n`;
   }
-  
+
   for (const instruction of selectedInstructions) {
     const category = instruction.metadata.category;
     const workspaceRoot = getWorkspaceRoot(import.meta.url);
     const relativePath = path.relative(
       path.join(workspaceRoot, '.copilot-instructions'),
-      instruction.filePath
+      instruction.filePath,
     );
-    
+
     markdown += `## ${category}: ${relativePath}\n\n`;
     markdown += `${instruction.content}\n\n`;
     markdown += `---\n\n`;
   }
-  
+
   // .github/copilot-instructions.md に書き込み
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
-  const outputPath = path.join(workspaceRoot, '.github/copilot-instructions.md');
-  
+  const outputPath = path.join(
+    workspaceRoot,
+    '.github/copilot-instructions.md',
+  );
+
   await fs.writeFile(outputPath, markdown, 'utf-8');
-  
+
   const hash = calculateHash(markdown);
-  
+
   // Record history
   await recordHistory(context, hash, selectedInstructions.length, markdown);
-  
+
   return {
     success: true,
     sectionsCount: selectedInstructions.length,

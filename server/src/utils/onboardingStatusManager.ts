@@ -1,7 +1,7 @@
 /**
  * onboardingStatusManager.ts
  * Onboarding status management
- * 
+ *
  * Responsibilities:
  * - Read/write onboarding status
  * - Determine restricted mode
@@ -18,35 +18,38 @@ const STATUS_FILE = path.join(STATUS_DIR, 'onboarding.json');
  * Onboarding status
  */
 export interface OnboardingStatus {
-  version: string;                        // Schema version
-  status: 'not_started'                   // Not started
-        | 'analyzed'                      // Analyzed
-        | 'proposed'                      // Proposed
-        | 'approved'                      // Approved
-        | 'completed'                     // Completed
-        | 'rejected'                      // Rejected
-        | 'skipped';                      // Skipped
-  
-  pattern?: 'clean'                       // No instructions
-          | 'structured'                  // Structured (compatible)
-          | 'unstructured'                // Unstructured
-          | 'messy';                      // Messy
-  
-  analyzedAt?: string;                    // Analysis timestamp (ISO 8601)
-  decidedAt?: string;                     // User decision timestamp
-  migratedAt?: string;                    // Migration execution timestamp
-  
-  problems?: Array<{                      // Detected problems
+  version: string; // Schema version
+  status:
+    | 'not_started' // Not started
+    | 'analyzed' // Analyzed
+    | 'proposed' // Proposed
+    | 'approved' // Approved
+    | 'completed' // Completed
+    | 'rejected' // Rejected
+    | 'skipped'; // Skipped
+
+  pattern?:
+    | 'clean' // No instructions
+    | 'structured' // Structured (compatible)
+    | 'unstructured' // Unstructured
+    | 'messy'; // Messy
+
+  analyzedAt?: string; // Analysis timestamp (ISO 8601)
+  decidedAt?: string; // User decision timestamp
+  migratedAt?: string; // Migration execution timestamp
+
+  problems?: Array<{
+    // Detected problems
     type: 'contradiction' | 'duplication' | 'unclear';
     description: string;
     locations: Array<{ line: number; text: string }>;
   }>;
-  
-  backupPath?: string;                    // Backup file path
-  canRollback: boolean;                   // Can rollback
-  rollbackUntil?: string;                 // Rollback deadline
-  
-  restrictedMode: boolean;                // Restricted mode
+
+  backupPath?: string; // Backup file path
+  canRollback: boolean; // Can rollback
+  rollbackUntil?: string; // Rollback deadline
+
+  restrictedMode: boolean; // Restricted mode
 }
 
 /**
@@ -57,7 +60,7 @@ function getInitialStatus(): OnboardingStatus {
     version: '1.0.0',
     status: 'not_started',
     canRollback: false,
-    restrictedMode: false
+    restrictedMode: false,
   };
 }
 
@@ -81,26 +84,24 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 /**
  * Save onboarding status
  */
-export async function saveOnboardingStatus(status: OnboardingStatus): Promise<void> {
+export async function saveOnboardingStatus(
+  status: OnboardingStatus,
+): Promise<void> {
   // Create directory if it doesn't exist
   await fs.mkdir(STATUS_DIR, { recursive: true });
-  
+
   // Save status
-  await fs.writeFile(
-    STATUS_FILE, 
-    JSON.stringify(status, null, 2), 
-    'utf-8'
-  );
+  await fs.writeFile(STATUS_FILE, JSON.stringify(status, null, 2), 'utf-8');
 }
 
 /**
  * Check if in restricted mode
- * 
+ *
  * Restricted mode conditions:
  * - status is 'analyzed' and pattern is 'unstructured' or 'messy'
  * - status is 'proposed' and not yet approved
  * - status is 'rejected'
- * 
+ *
  * Not restricted mode conditions:
  * - status is 'not_started' (initial state)
  * - status is 'completed' or 'skipped'
@@ -113,7 +114,7 @@ export async function isRestrictedMode(): Promise<boolean> {
 
 /**
  * Check if onboarding is completed
- * 
+ *
  * Completion conditions:
  * - status is 'completed' (migration completed)
  * - status is 'skipped' (user chose to skip)
@@ -121,18 +122,20 @@ export async function isRestrictedMode(): Promise<boolean> {
  */
 export async function isOnboardingCompleted(): Promise<boolean> {
   const status = await getOnboardingStatus();
-  
+
   // Explicit completion state
   if (status.status === 'completed' || status.status === 'skipped') {
     return true;
   }
-  
+
   // Consider analyzed as completed for compatible patterns
-  if (status.status === 'analyzed' && 
-      (status.pattern === 'clean' || status.pattern === 'structured')) {
+  if (
+    status.status === 'analyzed' &&
+    (status.pattern === 'clean' || status.pattern === 'structured')
+  ) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -142,14 +145,14 @@ export async function isOnboardingCompleted(): Promise<boolean> {
  */
 export async function skipOnboarding(): Promise<void> {
   const status = await getOnboardingStatus();
-  
+
   const newStatus: OnboardingStatus = {
     ...status,
     status: 'skipped',
     decidedAt: new Date().toISOString(),
-    restrictedMode: false
+    restrictedMode: false,
   };
-  
+
   await saveOnboardingStatus(newStatus);
 }
 
@@ -159,13 +162,13 @@ export async function skipOnboarding(): Promise<void> {
  */
 export async function completeOnboarding(): Promise<void> {
   const status = await getOnboardingStatus();
-  
+
   const newStatus: OnboardingStatus = {
     ...status,
     status: 'completed',
     decidedAt: new Date().toISOString(),
-    restrictedMode: false
+    restrictedMode: false,
   };
-  
+
   await saveOnboardingStatus(newStatus);
 }

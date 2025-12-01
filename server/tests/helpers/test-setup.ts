@@ -17,7 +17,10 @@ export async function createTestContext(): Promise<TestContext> {
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const instructionsDir = path.join(workspaceRoot, '.copilot-instructions');
   const stateDir = path.join(workspaceRoot, '.copilot-state');
-  const instructionsPath = path.join(workspaceRoot, '.github/copilot-instructions.md');
+  const instructionsPath = path.join(
+    workspaceRoot,
+    '.github/copilot-instructions.md',
+  );
 
   return {
     workspaceRoot,
@@ -51,14 +54,14 @@ export async function verifyInstructionsGenerated(ctx: TestContext): Promise<{
   preview?: string[];
 }> {
   const exists = await fileExists(ctx.instructionsPath);
-  
+
   if (!exists) {
     return { exists: false };
   }
 
   const content = await readFile(ctx.instructionsPath);
   const lines = content.split('\n');
-  
+
   return {
     exists: true,
     lines: lines.length,

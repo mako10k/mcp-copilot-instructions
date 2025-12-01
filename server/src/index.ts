@@ -22,7 +22,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 // Publish tool list
@@ -61,7 +61,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             category: {
               type: 'string',
-              description: 'Category (required for create, for filtering/update in read/update)',
+              description:
+                'Category (required for create, for filtering/update in read/update)',
             },
             title: {
               type: 'string',
@@ -69,7 +70,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             description: {
               type: 'string',
-              description: 'Description (required for create, for update in update)',
+              description:
+                'Description (required for create, for update in update)',
             },
             priority: {
               type: 'number',
@@ -78,7 +80,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Tags array (for filtering in read, for update in update)',
+              description:
+                'Tags array (for filtering in read, for update in update)',
             },
             minPriority: {
               type: 'number',
@@ -91,7 +94,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             format: {
               type: 'string',
               enum: ['summary', 'full'],
-              description: 'Display format (summary: concise display [default], full: detailed JSON)',
+              description:
+                'Display format (summary: concise display [default], full: detailed JSON)',
             },
           },
           required: ['action'],
@@ -107,8 +111,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             action: {
               type: 'string',
-              enum: ['update', 'read', 'reset', 'rollback', 'list-history', 'show-diff', 'cleanup-history'],
-              description: 
+              enum: [
+                'update',
+                'read',
+                'reset',
+                'rollback',
+                'list-history',
+                'show-diff',
+                'cleanup-history',
+              ],
+              description:
                 'Action: update(update state) / read(get current state) / reset(reset to default) / ' +
                 'rollback(restore from history) / list-history(list history) / show-diff(show diff) / cleanup-history(cleanup old history)',
             },
@@ -117,13 +129,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               properties: {
                 phase: {
                   type: 'string',
-                  enum: ['development', 'refactoring', 'testing', 'debugging', 'documentation'],
+                  enum: [
+                    'development',
+                    'refactoring',
+                    'testing',
+                    'debugging',
+                    'documentation',
+                  ],
                   description: 'Development phase',
                 },
                 focus: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Current focus (e.g. ["API authentication", "JWT"])',
+                  description:
+                    'Current focus (e.g. ["API authentication", "JWT"])',
                 },
                 priority: {
                   type: 'string',
@@ -140,27 +159,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             autoRegenerate: {
               type: 'boolean',
-              description: 'Whether to automatically regenerate instructions (default: true)',
+              description:
+                'Whether to automatically regenerate instructions (default: true)',
             },
             timestamp: {
               type: ['string', 'number'],
-              description: 'Timestamp or index to rollback to (for rollback, 0=latest)',
+              description:
+                'Timestamp or index to rollback to (for rollback, 0=latest)',
             },
             limit: {
               type: 'number',
-              description: 'Number of history entries to display (for list-history)',
+              description:
+                'Number of history entries to display (for list-history)',
             },
             from: {
               type: ['string', 'number'],
-              description: 'Source timestamp or index for comparison (for show-diff, default: 1)',
+              description:
+                'Source timestamp or index for comparison (for show-diff, default: 1)',
             },
             to: {
               type: ['string', 'number'],
-              description: 'Target timestamp or index for comparison (for show-diff, default: 0)',
+              description:
+                'Target timestamp or index for comparison (for show-diff, default: 0)',
             },
             daysToKeep: {
               type: 'number',
-              description: 'Number of days to keep (for cleanup-history, default: 30)',
+              description:
+                'Number of days to keep (for cleanup-history, default: 30)',
             },
           },
           required: ['action'],
@@ -177,18 +202,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             action: {
               type: 'string',
-              enum: ['read', 'update', 'delete', 'insert', 'detect-conflicts', 'resolve-conflict'],
+              enum: [
+                'read',
+                'update',
+                'delete',
+                'insert',
+                'detect-conflicts',
+                'resolve-conflict',
+              ],
               description:
                 'Action: read(get structure) / update(update section) / delete(delete section) / ' +
                 'insert(insert section) / detect-conflicts(detect conflicts) / resolve-conflict(resolve conflict)',
             },
             includeGitInfo: {
               type: 'boolean',
-              description: 'Whether to include Git information (for read only, default: false)',
+              description:
+                'Whether to include Git information (for read only, default: false)',
             },
             heading: {
               type: 'string',
-              description: 'Section heading (required for update/delete/insert/resolve-conflict)',
+              description:
+                'Section heading (required for update/delete/insert/resolve-conflict)',
             },
             content: {
               type: 'string',
@@ -203,7 +237,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             anchor: {
               type: 'string',
-              description: 'Reference section heading (required when position=before/after)',
+              description:
+                'Reference section heading (required when position=before/after)',
             },
             resolution: {
               type: 'string',
@@ -214,7 +249,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             manualContent: {
               type: 'string',
-              description: 'Manual merge content (required when resolution=manual)',
+              description:
+                'Manual merge content (required when resolution=manual)',
             },
           },
           required: ['action'],
@@ -230,7 +266,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             action: {
               type: 'string',
-              enum: ['analyze', 'status', 'skip', 'propose', 'approve', 'migrate', 'rollback'],
+              enum: [
+                'analyze',
+                'status',
+                'skip',
+                'propose',
+                'approve',
+                'migrate',
+                'rollback',
+              ],
               description:
                 'Action: analyze(analyze existing instructions) / status(check current status) / skip(skip onboarding) / ' +
                 'propose(create migration proposal) / approve(approve proposal) / migrate(execute migration) / rollback(rollback)',
@@ -251,11 +295,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             action: {
               type: 'string',
               enum: ['add', 'remove', 'list'],
-              description: 'Action: add(add flag) / remove(remove flag) / list(list flags)',
+              description:
+                'Action: add(add flag) / remove(remove flag) / list(list flags)',
             },
             filePath: {
               type: 'string',
-              description: 'Relative path to target file (e.g. "conventions/typescript.md", required for add/remove)',
+              description:
+                'Relative path to target file (e.g. "conventions/typescript.md", required for add/remove)',
             },
             flagType: {
               type: 'string',
@@ -287,7 +333,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             action: {
               type: 'string',
-              enum: ['create', 'read', 'update', 'delete', 'complete', 'advance', 'get-context', 'set-current', 'analyze-dependencies', 'calculate-priorities', 'reorder'],
+              enum: [
+                'create',
+                'read',
+                'update',
+                'delete',
+                'complete',
+                'advance',
+                'get-context',
+                'set-current',
+                'analyze-dependencies',
+                'calculate-priorities',
+                'reorder',
+              ],
               description:
                 'Action: create(create goal) / read(read goal) / update(update goal) / delete(delete goal) / ' +
                 'complete(complete goal and auto-advance) / advance(manually advance to goal) / ' +
@@ -296,7 +354,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             goalId: {
               type: 'string',
-              description: 'Goal ID (required for read/update/delete/complete/advance/set-current)',
+              description:
+                'Goal ID (required for read/update/delete/complete/advance/set-current)',
             },
             goal: {
               type: 'object',
@@ -320,7 +379,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 dependencies: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Goal IDs that must be completed first (creates dependency edges)',
+                  description:
+                    'Goal IDs that must be completed first (creates dependency edges)',
                 },
                 notes: {
                   type: 'string',
@@ -328,7 +388,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
                 contributionWeight: {
                   type: 'number',
-                  description: 'Contribution weight to parent goal (0-1, default 1)',
+                  description:
+                    'Contribution weight to parent goal (0-1, default 1)',
                 },
                 estimatedEffort: {
                   type: 'number',
@@ -340,7 +401,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
               },
               required: ['title', 'description'],
-              description: 'Goal data (required for create, optional for update)',
+              description:
+                'Goal data (required for create, optional for update)',
             },
             status: {
               type: 'string',

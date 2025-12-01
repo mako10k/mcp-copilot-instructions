@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Main test driver for MCP Copilot Instructions Server
- * 
+ *
  * Usage:
  *   npm test                    # Run all tests
  *   npm test -- unit            # Run only unit tests
@@ -18,14 +18,16 @@ import { testChangeContext } from './integration/change-context.test.js';
 // Register all test suites
 runner.register({
   name: 'project-context-crud',
-  description: 'Test project context CRUD operations (create, read, update, delete)',
+  description:
+    'Test project context CRUD operations (create, read, update, delete)',
   category: 'integration',
   run: testProjectContextCRUD,
 });
 
 runner.register({
   name: 'feedback',
-  description: 'Test feedback flag management (criticalFeedback, copilotEssential)',
+  description:
+    'Test feedback flag management (criticalFeedback, copilotEssential)',
   category: 'integration',
   run: testFeedback,
 });

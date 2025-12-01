@@ -90,21 +90,23 @@ export async function projectContext(args: ProjectContextArgs) {
       // Select display format
       const format = args.format || 'summary';
       if (format === 'summary') {
-        const header = args.category || args.tags
-          ? `Filter results (${contexts.length} items):`
-          : `Registered project contexts (${contexts.length} items):`;
+        const header =
+          args.category || args.tags
+            ? `Filter results (${contexts.length} items):`
+            : `Registered project contexts (${contexts.length} items):`;
         const summary = contexts
           .map(
             (ctx, idx) =>
-              `${idx + 1}. [${ctx.category}] ${ctx.title} (priority:${ctx.priority}) #${ctx.tags.join(' #')}\n   ID: ${ctx.id}`
+              `${idx + 1}. [${ctx.category}] ${ctx.title} (priority:${ctx.priority}) #${ctx.tags.join(' #')}\n   ID: ${ctx.id}`,
           )
           .join('\n\n');
         return `${header}\n\n${summary}`;
       } else {
         // full format (legacy JSON display)
-        const header = args.category || args.tags
-          ? `Filter results (${contexts.length} items):`
-          : `Registered project contexts (${contexts.length} items):`;
+        const header =
+          args.category || args.tags
+            ? `Filter results (${contexts.length} items):`
+            : `Registered project contexts (${contexts.length} items):`;
         return `${header}\n\n${JSON.stringify(contexts, null, 2)}`;
       }
     }
@@ -112,7 +114,8 @@ export async function projectContext(args: ProjectContextArgs) {
       const updates: Partial<Omit<typeof args, 'action' | 'id'>> = {};
       if (args.category !== undefined) updates.category = args.category;
       if (args.title !== undefined) updates.title = args.title;
-      if (args.description !== undefined) updates.description = args.description;
+      if (args.description !== undefined)
+        updates.description = args.description;
       if (args.priority !== undefined) updates.priority = args.priority;
       if (args.tags !== undefined) updates.tags = args.tags;
 

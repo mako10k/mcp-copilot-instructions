@@ -28,7 +28,9 @@ async function checkGitAvailable(): Promise<boolean> {
     console.log('[fileSystem] Git command available');
   } catch {
     gitAvailable = false;
-    console.warn('[fileSystem] Git command not found. Operating in degraded mode.');
+    console.warn(
+      '[fileSystem] Git command not found. Operating in degraded mode.',
+    );
   }
 
   return gitAvailable;
@@ -89,7 +91,9 @@ export async function checkGitManaged(filePath: string): Promise<boolean> {
  * @param filePath ファイルのパス
  * @returns コミットハッシュ、取得できない場合undefined
  */
-export async function getGitCommit(filePath: string): Promise<string | undefined> {
+export async function getGitCommit(
+  filePath: string,
+): Promise<string | undefined> {
   // Git コマンドが利用不可の場合は undefined を返す
   if (!(await checkGitAvailable())) {
     return undefined;
@@ -109,7 +113,9 @@ export async function getGitCommit(filePath: string): Promise<string | undefined
  * @param filePath ファイルのパス
  * @returns ステータス文字列 (modified, untracked, unmodified等)、取得できない場合はundefined
  */
-export async function getGitStatus(filePath: string): Promise<string | undefined> {
+export async function getGitStatus(
+  filePath: string,
+): Promise<string | undefined> {
   // Git コマンドが利用不可の場合は undefined を返す
   if (!(await checkGitAvailable())) {
     return undefined;
@@ -118,12 +124,14 @@ export async function getGitStatus(filePath: string): Promise<string | undefined
   try {
     const dir = path.dirname(filePath);
     const fileName = path.basename(filePath);
-    const { stdout } = await execAsync(`git status --porcelain "${fileName}"`, { cwd: dir });
-    
+    const { stdout } = await execAsync(`git status --porcelain "${fileName}"`, {
+      cwd: dir,
+    });
+
     if (!stdout.trim()) {
       return 'unmodified';
     }
-    
+
     const statusCode = stdout.substring(0, 2).trim();
     if (statusCode === 'M' || statusCode.includes('M')) {
       return 'modified';
@@ -145,7 +153,9 @@ export async function getGitStatus(filePath: string): Promise<string | undefined
  * @param filePath ファイルのパス
  * @returns diff内容、取得できない場合undefined
  */
-export async function getGitDiff(filePath: string): Promise<string | undefined> {
+export async function getGitDiff(
+  filePath: string,
+): Promise<string | undefined> {
   // Git コマンドが利用不可の場合は undefined を返す
   if (!(await checkGitAvailable())) {
     return undefined;
@@ -184,7 +194,7 @@ export async function readInstructionsFile(): Promise<string | null> {
  */
 export async function readWithState(
   filePath: string,
-  includeGitInfo: boolean = true
+  includeGitInfo: boolean = true,
 ): Promise<{ content: string; state: FileState }> {
   const content = await fs.readFile(filePath, 'utf-8');
   const stats = await fs.stat(filePath);
@@ -200,7 +210,7 @@ export async function readWithState(
   if (includeGitInfo) {
     const isGitManaged = await checkGitManaged(filePath);
     state.isGitManaged = isGitManaged;
-    
+
     if (isGitManaged) {
       state.gitCommit = await getGitCommit(filePath);
       state.gitStatus = await getGitStatus(filePath);
@@ -223,7 +233,7 @@ export async function readInstructionsFileWithState(): Promise<{
 } | null> {
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
-  
+
   try {
     return await readWithState(filePath);
   } catch {
@@ -241,7 +251,7 @@ export async function readInstructionsFileWithState(): Promise<{
 export async function writeWithConflictCheck(
   filePath: string,
   content: string,
-  expectedState: FileState
+  expectedState: FileState,
 ): Promise<{ success: boolean; conflict?: ConflictInfo }> {
   // Get current file state
   const current = await readWithState(filePath);
@@ -251,7 +261,8 @@ export async function writeWithConflictCheck(
     return {
       success: false,
       conflict: {
-        message: '外部変更が検知されました。ファイルが別のプロセスまたは人間開発者によって変更されています。',
+        message:
+          '外部変更が検知されました。ファイルが別のプロセスまたは人間開発者によって変更されています。',
         expectedHash: expectedState.hash,
         currentHash: current.state.hash,
         filePath: filePath,
@@ -284,7 +295,7 @@ export async function writeInstructionsFile(content: string): Promise<void> {
  */
 export async function writeInstructionsFileWithConflictCheck(
   content: string,
-  expectedState: FileState
+  expectedState: FileState,
 ): Promise<{ success: boolean; conflict?: ConflictInfo }> {
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
