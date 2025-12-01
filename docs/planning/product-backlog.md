@@ -229,13 +229,15 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 - [x] 書き込み前に外部変更を検知
 - [x] 競合時にエラーメッセージ表示
 
-**Step 1.5: 競合マーカー方式** (次期実装)
-- [ ] セクション単位のハッシュ比較
-- [ ] 他セクション変更時の自動マージ
-- [ ] 同一セクション変更時の競合マーカー挿入
-- [ ] `action: 'detect-conflicts'` 実装
-- [ ] `action: 'resolve-conflict'` 実装(3パターン対応)
-- [ ] 競合解決のテストシナリオ
+**Step 1.5: 競合マーカー方式** ✅ (完了 2025-12-01)
+- [x] セクション単位のハッシュ比較
+- [x] 他セクション変更時の自動マージ
+- [x] 同一セクション変更時の競合マーカー挿入
+- [x] `action: 'detect-conflicts'` 実装
+- [x] `action: 'resolve-conflict'` 実装(3パターン対応: use-head/use-mcp/manual)
+- [x] 競合解決のテストシナリオ（全6テスト成功）
+- [x] テキストベース処理で競合マーカー保持（Markdownパーサー回避）
+- [x] 初期スナップショット機能で外部変更検出
 
 **Step 2: Git統合** (Phase 2後半)
 - [ ] Git管理状態を自動判定

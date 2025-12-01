@@ -44,7 +44,13 @@
 - ✅ Scenario 3: instructions\_structure (Markdown AST) - セクション読み取り・更新
 - ✅ Scenario 4: project\_context完全CRUD - update/delete/filter実装、action混入バグ修正
 - ✅ Scenario 5: 実プロジェクト活用 - 本プロジェクトをMCPツールで管理、UX改善（summary表示追加）
-- ✅ Scenario 6: 外部変更検知（Phase 2開始） - SHA-256ハッシュによる競合検知、安全な書き込み機構
+- ✅ Scenario 6: 外部変更検知（Phase 2開始）
+  - Step 1: SHA-256ハッシュによる競合検知、安全な書き込み機構 ✅
+  - Step 1.5: 競合マーカー方式実装 ✅ (2025-12-01)
+    - セクション単位の自動マージ
+    - Git風競合マーカー挿入
+    - detect-conflicts/resolve-conflict アクション
+    - 全6テストシナリオパス
 
 ## 存在しないセクション
 

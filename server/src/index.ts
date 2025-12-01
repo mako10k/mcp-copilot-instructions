@@ -94,22 +94,38 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'instructions_structure',
-        description: '指示書Markdown ASTのCRUD操作',
+        description:
+          '指示書Markdown ASTのCRUD操作と競合管理。' +
+          'update時は自動マージまたは競合マーカー挿入。' +
+          'detect-conflictsで競合検出、resolve-conflictで解決。',
         inputSchema: {
           type: 'object',
           properties: {
             action: {
               type: 'string',
-              enum: ['read', 'update'],
-              description: 'アクション: read/update',
+              enum: ['read', 'update', 'detect-conflicts', 'resolve-conflict'],
+              description:
+                'アクション: read(構造取得) / update(セクション更新) / ' +
+                'detect-conflicts(競合検出) / resolve-conflict(競合解決)',
             },
             heading: {
               type: 'string',
-              description: 'セクション見出し（updateの場合必須）',
+              description: 'セクション見出し（update/resolve-conflictの場合必須）',
             },
             content: {
               type: 'string',
               description: 'セクション内容（updateの場合必須）',
+            },
+            resolution: {
+              type: 'string',
+              enum: ['use-head', 'use-mcp', 'manual'],
+              description:
+                '競合解決方法（resolve-conflictの場合必須）: ' +
+                'use-head(外部変更採用) / use-mcp(Copilot変更採用) / manual(手動統合)',
+            },
+            manualContent: {
+              type: 'string',
+              description: '手動統合内容（resolution=manualの場合必須）',
             },
           },
           required: ['action'],

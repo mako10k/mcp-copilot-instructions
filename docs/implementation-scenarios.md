@@ -779,6 +779,61 @@ case 'detect-conflicts': {
 #### 4. 新規アクション: resolve-conflict
 ```typescript
 case 'resolve-conflict': {
+  // 3つの解決戦略
+  // - use-head: 外部変更を採用
+  // - use-mcp: Copilotの変更を採用
+  // - manual: 両方を統合（manualContentで指定）
+  await resolveConflict(args.heading, args.resolution, args.manualContent);
+  return '競合を解決しました。';
+}
+```
+
+#### 5. Copilot のワークフロー
+```
+1. updateSection実行 → conflict返却
+2. "競合を検出しました。セクション「XXX」..."
+3. 次のターンで指示書を読み直し
+4. 競合マーカーを発見 → 両方の内容を理解
+5. 判断:
+   - 統合可能 → resolve-conflict (manual) で両方を反映
+   - 外部変更優先 → resolve-conflict (use-head)
+   - 自分優先 → resolve-conflict (use-mcp)
+   - 不明 → 人間に確認依頼
+```
+
+### 成功基準
+
+- [x] セクション単位のハッシュ計算
+- [x] 自動マージ（異なるセクション変更時）
+- [x] 競合マーカー挿入（同一セクション変更時）
+- [x] detectConflictMarkers関数実装
+- [x] resolveConflict関数実装（3つの戦略）
+- [x] detect-conflicts/resolve-conflictアクション追加
+- [x] テストスクリプトで全シナリオ検証
+  - [x] 他セクション変更時の自動マージ
+  - [x] 同一セクション変更時の競合検出
+  - [x] 競合マーカー検出
+  - [x] manual解決
+  - [x] use-head解決
+  - [x] 競合解決後の確認
+
+### 実装状況: ✅ 完了 (2025-12-01)
+
+**実装詳細**:
+- `markdownAst.ts`にセクション単位のハッシュ機能追加
+- `updateSection`に初期スナップショット機能追加（外部変更検出）
+- 競合マーカーは生テキストで挿入（Markdownパーサーの影響を回避）
+- `detectConflictMarkers`で<<<<<<< ... =======  ... >>>>>>>パターン検出
+- `resolveConflict`でテキストベース置換（競合マーカー完全削除）
+- `instructions_structure`ツールに新アクション追加
+- 全6テストシナリオパス確認
+
+**技術的な課題と解決**:
+1. Markdownパーサーが競合マーカーを変形 → テキストベース挿入に変更
+2. updateSection内での2回読み込みでは外部変更検出不可 → initialSnapshotパラメータ追加
+3. resolveConflictでASTベース処理が競合マーカーを削除できず → テキストベース置換に変更
+
+case 'resolve-conflict': {
   heading: string;
   resolution: 'use-head' | 'use-mcp' | 'manual';
   manualContent?: string;  // resolution='manual'の場合
