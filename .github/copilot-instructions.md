@@ -2,7 +2,7 @@
 
 - 主目的: LLMのコンテキスト制約を「指示書の動的更新」で突破し、AI挙動の安定化と再現性を確保する。
 - 主体: **Copilot (LLM自身)** は毎ターン冒頭で本指示書を読み、差分を検知・遵守・更新する。
-- 注意: 本プロジェクトでの「ユーザー」は主に**Copilot (LLM)**を指す。人間開発者はCopilot経由でMCPツールを使用。
+- 注意: 本プロジェクトでの「ユーザー」は主に\*\*Copilot (LLM)\*\*を指す。人間開発者はCopilot経由でMCPツールを使用。
 
 ## 用語の定義
 
@@ -31,6 +31,7 @@
 - 設計: `docs/mcp-server-design.md`
 - 運用: `docs/operation-scenarios.md`
 - 調査: `research/copilot-instructions-research.md`
+- バックログ: `docs/PRODUCT_BACKLOG.md` - 将来実装すべき機能（外部変更検知等）
 
 ## テスト原則
 
