@@ -23,7 +23,7 @@ const server = new Server(
   }
 );
 
-// ツール一覧を公開
+// Publish tool list
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -279,7 +279,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-// ツール呼び出しを処理
+// Handle tool invocation
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
@@ -340,7 +340,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// サーバを起動
+// Start server
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

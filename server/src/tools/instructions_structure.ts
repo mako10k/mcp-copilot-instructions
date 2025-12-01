@@ -58,11 +58,11 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
   if (args.action !== 'read' && args.action !== 'detect-conflicts') {
     const restricted = await isRestrictedMode();
     if (restricted) {
-      return '❌ 機能制限モード: このアクションは利用できません。\n\n' +
-             'オンボーディングを完了するか、読み取り専用モードで使用してください。\n\n' +
-             '【詳細確認】\n' +
+      return '❗ Restricted Mode: This action is not available.\n\n' +
+             'Please complete onboarding or use in read-only mode.\n\n' +
+             '[Check Details]\n' +
              'onboarding({ action: "status" })\n\n' +
-             '【オンボーディング】\n' +
+             '[Onboarding]\n' +
              'onboarding({ action: "analyze" })';
     }
   }
@@ -71,7 +71,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
     case 'read': {
       const sections = await readInstructionsSections();
       if (sections.length === 0) {
-        return '指示書が存在しないか、セクションがありません。';
+        return 'Instructions file does not exist or has no sections.';
       }
       
       let result = '';
@@ -80,20 +80,20 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
       if (args.includeGitInfo) {
         const fileState = await readInstructionsFileWithState();
         if (fileState) {
-          result += '📊 ファイル状態:\n';
+          result += '📊 File State:\n';
           result += `  • SHA-256: ${fileState.state.hash.substring(0, 16)}...\n`;
-          result += `  • サイズ: ${fileState.content.length} bytes\n`;
+          result += `  • Size: ${fileState.content.length} bytes\n`;
           
           if (fileState.state.isGitManaged) {
-            result += `  • Git管理: ✓\n`;
-            result += `  • コミット: ${fileState.state.gitCommit?.substring(0, 8)}...\n`;
-            result += `  • ステータス: ${fileState.state.gitStatus}\n`;
+            result += `  • Git managed: ✓\n`;
+            result += `  • Commit: ${fileState.state.gitCommit?.substring(0, 8)}...\n`;
+            result += `  • Status: ${fileState.state.gitStatus}\n`;
             
             if (fileState.state.gitStatus === 'modified') {
-              result += `  ⚠️ 未コミットの変更があります\n`;
+              result += `  ⚠️ Uncommitted changes detected\n`;
             }
           } else {
-            result += `  • Git管理: ✗\n`;
+            result += `  • Git managed: ✗\n`;
           }
           result += '\n';
         }
@@ -102,10 +102,10 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
       const summary = sections
         .map(
           (s, i) =>
-            `${i + 1}. ${'#'.repeat(s.level)} ${s.heading} (${s.content.length}文字)`
+            `${i + 1}. ${'#'.repeat(s.level)} ${s.heading} (${s.content.length} chars)`
         )
         .join('\n');
-      result += `指示書のセクション構造（全${sections.length}セクション）:\n\n${summary}`;
+      result += `Instructions section structure (${sections.length} sections total):\n\n${summary}`;
       
       return result;
     }
@@ -118,23 +118,23 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         });
 
         if (result.autoMerged) {
-          return `✓ セクション「${args.heading}」を更新しました（他セクションの変更を自動マージ）。`;
+          return `✓ Section "${args.heading}" updated (auto-merged changes from other sections).`;
         }
 
         if (!result.success && result.conflict) {
           return `⚠️ ${result.conflict}`;
         }
 
-        return `セクション「${args.heading}」を更新しました。`;
+        return `Section "${args.heading}" updated.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         
         // Clear message for lock acquisition failure
         if (message.includes('Failed to acquire lock')) {
-          return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+          return `❗ Lock acquisition timeout: Another session is updating instructions. Please wait and retry.`;
         }
         
-        return `エラー: ${message}`;
+        return `Error: ${message}`;
       }
     }
 
@@ -142,18 +142,18 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
       try {
         const conflicts = await detectConflictMarkers();
         if (conflicts.length === 0) {
-          return '競合はありません。';
+          return 'No conflicts detected.';
         }
 
         const conflictList = conflicts
-          .map((c, i) => `${i + 1}. セクション: ${c.heading}`)
+          .map((c, i) => `${i + 1}. Section: ${c.heading}`)
           .join('\n');
 
-        return `${conflicts.length}件の競合を検出しました:\n\n${conflictList}\n\n` +
-          `解決するには action='resolve-conflict' を使用してください。`;
+        return `${conflicts.length} conflicts detected:\n\n${conflictList}\n\n` +
+          `To resolve, use action='resolve-conflict'.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return `エラー: ${message}`;
+        return `Error: ${message}`;
       }
     }
 
@@ -169,20 +169,20 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         });
 
         if (!result.success) {
-          return `エラー: ${result.error}`;
+          return `Error: ${result.error}`;
         }
 
         const resolutionMsg =
           args.resolution === 'use-head'
-            ? '外部変更を採用'
+            ? 'used external changes'
             : args.resolution === 'use-mcp'
-            ? 'Copilot変更を採用'
-            : '手動統合';
+            ? 'used Copilot changes'
+            : 'manual merge';
 
-        return `✓ セクション「${args.heading}」の競合を解決しました（${resolutionMsg}）。`;
+        return `✓ Conflict in section "${args.heading}" resolved (${resolutionMsg}).`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        return `エラー: ${message}`;
+        return `Error: ${message}`;
       }
     }
 
@@ -194,18 +194,18 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         });
 
         if (!result.success) {
-          return `エラー: ${result.error}`;
+          return `Error: ${result.error}`;
         }
 
-        return `✓ セクション「${args.heading}」を削除しました。`;
+        return `✓ Section "${args.heading}" deleted.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         
         if (message.includes('Failed to acquire lock')) {
-          return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+          return `❗ Lock acquisition timeout: Another session is updating instructions. Please wait and retry.`;
         }
         
-        return `エラー: ${message}`;
+        return `Error: ${message}`;
       }
     }
 
@@ -222,27 +222,27 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         });
 
         if (!result.success) {
-          return `エラー: ${result.error}`;
+          return `Error: ${result.error}`;
         }
 
         const positionMsg =
           args.position === 'first'
-            ? '先頭に'
+            ? 'at the beginning'
             : args.position === 'last'
-            ? '最後に'
+            ? 'at the end'
             : args.position === 'before'
-            ? `「${args.anchor}」の前に`
-            : `「${args.anchor}」の後に`;
+            ? `before "${args.anchor}"`
+            : `after "${args.anchor}"`;
 
-        return `✓ セクション「${args.heading}」を${positionMsg}挿入しました。`;
+        return `✓ Section "${args.heading}" inserted ${positionMsg}.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         
         if (message.includes('Failed to acquire lock')) {
-          return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+          return `❌ Lock acquisition timeout: Another session is updating instructions. Please wait and retry.`;
         }
         
-        return `エラー: ${message}`;
+        return `Error: ${message}`;
       }
     }
 

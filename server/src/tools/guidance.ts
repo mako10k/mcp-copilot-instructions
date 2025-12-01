@@ -4,70 +4,70 @@ import { getOnboardingStatus } from '../utils/onboardingStatusManager';
 export async function guidance({ action }: { action: string }) {
   switch (action) {
     case 'overview':
-      return 'MCPサーバはCopilot指示書の外部記憶・編集・分析を担うMVPです。';
+      return 'MCP server handles external storage, editing, and analysis of Copilot instructions as MVP.';
     case 'getting-started':
-      return 'src/index.tsでguidance, project_context, instructions_structureをCLIで呼び出せます。';
+      return 'You can call guidance, project_context, instructions_structure from CLI in src/index.ts.';
     case 'current-state': {
-      // 指示書の状態
+      // Instructions status
       const content = await readInstructionsFile();
       let instructionsStatus: string;
       if (!content) {
-        instructionsStatus = '指示書が未初期化です。.github/copilot-instructions.md を作成してください。';
+        instructionsStatus = 'Instructions not initialized. Please create .github/copilot-instructions.md.';
       } else {
         const lines = content.split('\n');
         const preview = lines.slice(0, 10).join('\n');
         const totalLines = lines.length;
-        instructionsStatus = `指示書が存在します（全${totalLines}行）\n\n[先頭10行プレビュー]\n${preview}\n\n...`;
+        instructionsStatus = `Instructions exist (${totalLines} lines total)\n\n[First 10 lines preview]\n${preview}\n\n...`;
       }
       
-      // オンボーディング状態
+      // Onboarding status
       const onboardingStatus = await getOnboardingStatus();
-      let onboardingInfo = '\n\n【オンボーディング状態】\n';
+      let onboardingInfo = '\n\n【Onboarding Status】\n';
       
       if (onboardingStatus.status === 'not_started') {
-        onboardingInfo += '⚠️  未実施: 既存プロジェクトへの導入分析が必要です。\n\n';
-        onboardingInfo += '【推奨アクション】\n';
-        onboardingInfo += 'onboarding({ action: "analyze" }) を実行して、既存の指示書を分析してください。\n';
-        onboardingInfo += '新規プロジェクトの場合は、onboarding({ action: "skip" }) でスキップできます。';
+        onboardingInfo += '⚠️  Not started: Analysis for existing project introduction is required.\n\n';
+        onboardingInfo += '【Recommended Action】\n';
+        onboardingInfo += 'Run onboarding({ action: "analyze" }) to analyze existing instructions.\n';
+        onboardingInfo += 'For new projects, you can skip with onboarding({ action: "skip" }).';
       } else {
         const statusLabels = {
-          analyzed: '分析済み',
-          proposed: '提案作成済み',
-          approved: '承認済み',
-          completed: '完了',
-          rejected: '却下',
-          skipped: 'スキップ済み',
+          analyzed: 'Analyzed',
+          proposed: 'Proposal Created',
+          approved: 'Approved',
+          completed: 'Completed',
+          rejected: 'Rejected',
+          skipped: 'Skipped',
         };
         const statusLabel = statusLabels[onboardingStatus.status as keyof typeof statusLabels] || onboardingStatus.status;
         
-        onboardingInfo += `状態: ${statusLabel}\n`;
+        onboardingInfo += `Status: ${statusLabel}\n`;
         if (onboardingStatus.pattern) {
           const patternLabels = {
-            clean: '✓ クリーン（新規作成）',
-            structured: '✓ 構造化済み（互換性あり）',
-            unstructured: '⚠️  非構造化（マイグレーション推奨）',
-            messy: '❌ 問題あり（手動修正必要）',
+            clean: '✓ Clean (new creation)',
+            structured: '✓ Structured (compatible)',
+            unstructured: '⚠️  Unstructured (migration recommended)',
+            messy: '❌ Problems detected (manual fix required)',
           };
-          onboardingInfo += `パターン: ${patternLabels[onboardingStatus.pattern]}\n`;
+          onboardingInfo += `Pattern: ${patternLabels[onboardingStatus.pattern]}\n`;
         }
         
         if (onboardingStatus.restrictedMode) {
-          onboardingInfo += '\n🔒 機能制限モード: 一部の書き込み操作が制限されています。\n';
-          onboardingInfo += '【制限される機能】\n';
+          onboardingInfo += '\n🔒 Restricted Mode: Some write operations are restricted.\n';
+          onboardingInfo += '【Restricted Features】\n';
           onboardingInfo += '- instructions_structure: update/delete/insert/resolve-conflict\n';
           onboardingInfo += '- change_context: update/reset/rollback\n\n';
-          onboardingInfo += '【利用可能な機能】\n';
-          onboardingInfo += '- guidance, project_context, feedback（すべての操作）\n';
-          onboardingInfo += '- instructions_structure: read/detect-conflicts（読み取り専用）\n';
-          onboardingInfo += '- change_context: read/list-history/show-diff（読み取り専用）\n\n';
-          onboardingInfo += '【制限解除】\n';
-          onboardingInfo += 'onboarding({ action: "status" }) で詳細を確認してください。';
+          onboardingInfo += '【Available Features】\n';
+          onboardingInfo += '- guidance, project_context, feedback (all operations)\n';
+          onboardingInfo += '- instructions_structure: read/detect-conflicts (read-only)\n';
+          onboardingInfo += '- change_context: read/list-history/show-diff (read-only)\n\n';
+          onboardingInfo += '【Unlock Restrictions】\n';
+          onboardingInfo += 'Check details with onboarding({ action: "status" }).';
         } else {
-          onboardingInfo += '✓ 通常モード: すべての機能が利用可能です。';
+          onboardingInfo += '✓ Normal Mode: All features are available.';
         }
         
         if (onboardingStatus.analyzedAt) {
-          onboardingInfo += `\n\n分析日時: ${onboardingStatus.analyzedAt}`;
+          onboardingInfo += `\n\nAnalysis date: ${onboardingStatus.analyzedAt}`;
         }
       }
       

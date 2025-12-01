@@ -154,8 +154,8 @@ export async function skipOnboarding(): Promise<void> {
 }
 
 /**
- * オンボーディングを完了状態にする
- * マイグレーション成功時または互換性確認時に使用
+ * Mark onboarding as completed
+ * Used when migration succeeds or compatibility is confirmed
  */
 export async function completeOnboarding(): Promise<void> {
   const status = await getOnboardingStatus();

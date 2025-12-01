@@ -13,11 +13,11 @@ interface ScoringRules {
 
 interface FeedbackArgs {
   action: 'add' | 'remove' | 'list';
-  // add/remove用
-  filePath?: string;  // 相対パス（例: "conventions/typescript.md"）
+  // For add/remove
+  filePath?: string;  // Relative path (e.g., "conventions/typescript.md")
   flagType?: 'criticalFeedback' | 'copilotEssential';
-  reason?: string;  // フィードバックの理由
-  // list用
+  reason?: string;  // Reason for feedback
+  // For list
   filter?: 'criticalFeedback' | 'copilotEssential' | 'all';
 }
 
@@ -143,11 +143,11 @@ export async function feedback(args: FeedbackArgs): Promise<string> {
     
     const warnings: string[] = [];
     if (criticalCount >= criticalLimit.softLimit) {
-      const status = criticalCount >= criticalLimit.hardLimit ? '❌ ハードリミット到達' : '⚠️ ソフトリミット到達';
+      const status = criticalCount >= criticalLimit.hardLimit ? '❌ Hard limit reached' : '⚠️ Soft limit reached';
       warnings.push(`criticalFeedback: ${criticalCount}/${criticalLimit.hardLimit} ${status}`);
     }
     if (essentialCount >= essentialLimit.softLimit) {
-      const status = essentialCount >= essentialLimit.hardLimit ? '❌ ハードリミット到達' : '⚠️ ソフトリミット到達';
+      const status = essentialCount >= essentialLimit.hardLimit ? '❌ Hard limit reached' : '⚠️ Soft limit reached';
       warnings.push(`copilotEssential: ${essentialCount}/${essentialLimit.hardLimit} ${status}`);
     }
     
@@ -206,14 +206,14 @@ export async function feedback(args: FeedbackArgs): Promise<string> {
       return JSON.stringify({
         success: false,
         error: 'HARD_LIMIT_REACHED',
-        message: `❌ ハードリミット到達: ${args.flagType}は最大${limits.hardLimit}個までです。`,
+        message: `❌ Hard limit reached: ${args.flagType} can have up to ${limits.hardLimit} flags.`,
         currentCount,
         hardLimit: limits.hardLimit,
         existingFlags: currentFeedbacks.map(f => ({
           filePath: f.filePath,
           reason: f.reason,
         })),
-        suggestion: `既存のフラグを削除してから追加してください。\n\n現在の${args.flagType}フラグ付き指示:\n${existingList}`,
+        suggestion: `Please remove an existing flag before adding a new one.\n\nCurrent ${args.flagType} flagged instructions:\n${existingList}`,
       }, null, 2);
     }
     
@@ -224,13 +224,13 @@ export async function feedback(args: FeedbackArgs): Promise<string> {
         `  - ${f.filePath}${f.reason ? ` (${f.reason})` : ''}`
       ).join('\n');
       
-      warning = `⚠️ ソフトリミット到達: ${args.flagType}は現在${currentCount}個です（推奨: ${limits.softLimit}個まで）。\n` +
-                `次回追加時にハードリミット(${limits.hardLimit}個)に達します。\n\n` +
-                `現在の${args.flagType}フラグ付き指示:\n${existingList}\n\n` +
-                `推奨アクション:\n` +
-                `  - 既存の優先フラグを見直して、本当に必要か検討してください\n` +
-                `  - 優先度の低いものを削除してから追加してください\n` +
-                `  - または、統合できる内容がないか確認してください`;
+      warning = `⚠️ Soft limit reached: ${args.flagType} currently has ${currentCount} flags (recommended: up to ${limits.softLimit}).\n` +
+                `Next addition will reach the hard limit (${limits.hardLimit} flags).\n\n` +
+                `Current ${args.flagType} flagged instructions:\n${existingList}\n\n` +
+                `Recommended actions:\n` +
+                `  - Review existing priority flags and determine if they are truly necessary\n` +
+                `  - Remove lower priority flags before adding new ones\n` +
+                `  - Or check if any content can be consolidated`;
     }
     
     await updateInstructionFrontmatter(args.filePath, args.flagType, true, args.reason);

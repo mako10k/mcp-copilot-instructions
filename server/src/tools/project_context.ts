@@ -59,7 +59,7 @@ export async function projectContext(args: ProjectContextArgs) {
       });
       contexts.push(newContext);
       await saveContexts(contexts);
-      return `プロジェクト文脈を作成しました。\nID: ${newContext.id}\nタイトル: ${newContext.title}`;
+      return `Project context created.\nID: ${newContext.id}\nTitle: ${newContext.title}`;
     }
     case 'read': {
       // If filters are specified
@@ -77,13 +77,13 @@ export async function projectContext(args: ProjectContextArgs) {
           maxPriority: args.maxPriority,
         });
         if (contexts.length === 0) {
-          return 'フィルタ条件に一致するプロジェクト文脈が見つかりませんでした。';
+          return 'No project contexts found matching filter criteria.';
         }
       } else {
         // No filters - fetch all
         contexts = await loadContexts();
         if (contexts.length === 0) {
-          return 'プロジェクト文脈が登録されていません。';
+          return 'No project contexts registered.';
         }
       }
 
@@ -91,20 +91,20 @@ export async function projectContext(args: ProjectContextArgs) {
       const format = args.format || 'summary';
       if (format === 'summary') {
         const header = args.category || args.tags
-          ? `フィルタ結果（${contexts.length}件）:`
-          : `登録済みプロジェクト文脈（${contexts.length}件）:`;
+          ? `Filter results (${contexts.length} items):`
+          : `Registered project contexts (${contexts.length} items):`;
         const summary = contexts
           .map(
             (ctx, idx) =>
-              `${idx + 1}. [${ctx.category}] ${ctx.title} (優先度:${ctx.priority}) #${ctx.tags.join(' #')}\n   ID: ${ctx.id}`
+              `${idx + 1}. [${ctx.category}] ${ctx.title} (priority:${ctx.priority}) #${ctx.tags.join(' #')}\n   ID: ${ctx.id}`
           )
           .join('\n\n');
         return `${header}\n\n${summary}`;
       } else {
         // full format (legacy JSON display)
         const header = args.category || args.tags
-          ? `フィルタ結果（${contexts.length}件）:`
-          : `登録済みプロジェクト文脈（${contexts.length}件）:`;
+          ? `Filter results (${contexts.length} items):`
+          : `Registered project contexts (${contexts.length} items):`;
         return `${header}\n\n${JSON.stringify(contexts, null, 2)}`;
       }
     }
@@ -118,16 +118,16 @@ export async function projectContext(args: ProjectContextArgs) {
 
       const success = await updateContext(args.id, updates);
       if (!success) {
-        return `エラー: ID「${args.id}」のプロジェクト文脈が見つかりませんでした。`;
+        return `Error: Project context with ID "${args.id}" not found.`;
       }
-      return `プロジェクト文脈を更新しました。\nID: ${args.id}`;
+      return `Project context updated.\nID: ${args.id}`;
     }
     case 'delete': {
       const success = await deleteContext(args.id);
       if (!success) {
-        return `エラー: ID「${args.id}」のプロジェクト文脈が見つかりませんでした。`;
+        return `Error: Project context with ID "${args.id}" not found.`;
       }
-      return `プロジェクト文脈を削除しました。\nID: ${args.id}`;
+      return `Project context deleted.\nID: ${args.id}`;
     }
     default:
       return `Unknown action: ${(args as any).action}`;

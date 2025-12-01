@@ -1,13 +1,13 @@
 /**
  * onboarding.ts
- * 既存プロジェクトへの安全な導入ツール
+ * Safe onboarding tool for existing projects
  * 
- * 責務:
- * - 既存指示書の分析（analyze）
- * - オンボーディング状態の確認（status）
- * - マイグレーション提案（propose）※Phase B
- * - マイグレーション実行（migrate）※Phase C
- * - ロールバック（rollback）※Phase C
+ * Responsibilities:
+ * - Analyze existing instructions (analyze)
+ * - Check onboarding status (status)
+ * - Migration proposal (propose) ※Phase B
+ * - Execute migration (migrate) ※Phase C
+ * - Rollback (rollback) ※Phase C
  */
 
 import { 
@@ -22,15 +22,15 @@ import {
 } from '../utils/instructionsAnalyzer';
 
 /**
- * onboardingツールの引数
+ * Arguments for onboarding tool
  */
 interface OnboardingArgs {
   action: 'analyze' | 'status' | 'propose' | 'approve' | 'migrate' | 'rollback' | 'skip';
-  // Phase B, C用のパラメータは後で追加
+  // Parameters for Phase B and C will be added later
 }
 
 /**
- * onboardingツールのメイン関数
+ * Main function for onboarding tool
  */
 export async function onboarding(args: OnboardingArgs): Promise<string> {
   switch (args.action) {
@@ -47,32 +47,32 @@ export async function onboarding(args: OnboardingArgs): Promise<string> {
     case 'approve':
     case 'migrate':
     case 'rollback':
-      return `未実装のアクション: ${args.action}\n\nPhase B, Cで実装予定です。`;
+      return `Unimplemented action: ${args.action}\n\nPlanned for implementation in Phase B and C.`;
     
     default:
-      return `不明なアクション: ${args.action}`;
+      return `Unknown action: ${args.action}`;
   }
 }
 
 /**
- * analyzeアクション: 既存指示書を分析
+ * analyze action: Analyze existing instructions
  */
 async function handleAnalyze(): Promise<string> {
   const analysis = await analyzeInstructions();
   const status = await getOnboardingStatus();
   
-  // 状態を更新
+  // Update status
   const newStatus: OnboardingStatus = {
     ...status,
     status: 'analyzed',
     pattern: analysis.pattern,
     analyzedAt: new Date().toISOString(),
     problems: analysis.problems,
-    // 機能制限モードの判定
+    // Determine restricted mode
     restrictedMode: analysis.pattern === 'messy' || analysis.pattern === 'unstructured'
   };
   
-  // 互換性のあるパターンの場合は自動的に完了状態にする
+  // Automatically set to completed for compatible patterns
   if (analysis.pattern === 'clean' || analysis.pattern === 'structured') {
     newStatus.status = 'completed';
     newStatus.restrictedMode = false;
@@ -80,12 +80,12 @@ async function handleAnalyze(): Promise<string> {
   
   await saveOnboardingStatus(newStatus);
   
-  // 結果を整形して返す
+  // Format and return results
   return formatAnalysisResult(analysis);
 }
 
 /**
- * statusアクション: オンボーディング状態を確認
+ * status action: Check onboarding status
  */
 async function handleStatus(): Promise<string> {
   const status = await getOnboardingStatus();
@@ -93,103 +93,103 @@ async function handleStatus(): Promise<string> {
 }
 
 /**
- * skipアクション: オンボーディングをスキップ（後で検討）
+ * skip action: Skip onboarding (decide later)
  */
 async function handleSkip(): Promise<string> {
   await skipOnboarding();
-  return '✅ オンボーディングをスキップしました。\n\n' +
-         '通常モードで動作します。\n' +
-         'いつでも再分析できます: onboarding({ action: "analyze" })';
+  return '✅ Onboarding skipped.\n\n' +
+         'Will operate in normal mode.\n' +
+         'You can re-analyze anytime: onboarding({ action: "analyze" })';
 }
 
 /**
- * 分析結果を整形
+ * Format analysis results
  */
 function formatAnalysisResult(analysis: AnalysisResult): string {
-  let result = '📊 既存指示書の分析結果\n';
+  let result = '📊 Analysis Results of Existing Instructions\n';
   result += '='.repeat(50) + '\n\n';
   
   switch (analysis.pattern) {
     case 'clean':
-      result += '✅ **パターン: クリーン導入**\n\n';
-      result += '指示書が存在しません。新規作成できます。\n\n';
-      result += '【次のステップ】\n';
-      result += 'そのまま利用を開始してください。\n';
-      result += '- instructions_structure を使って指示書を作成・管理できます\n';
-      result += '- change_context で動的な指示書生成が利用できます\n\n';
-      result += '✓ 通常モードで動作します。';
+      result += '✅ **Pattern: Clean Installation**\n\n';
+      result += 'No instruction file exists. You can create a new one.\n\n';
+      result += '【Next Steps】\n';
+      result += 'You can start using it right away.\n';
+      result += '- Use instructions_structure to create and manage instructions\n';
+      result += '- Use change_context for dynamic instruction generation\n\n';
+      result += '✓ Operates in normal mode.';
       break;
       
     case 'structured':
-      result += '✅ **パターン: 構造化済み**\n\n';
-      result += `${analysis.structured!.sections.length}個のセクションを検出しました。\n\n`;
-      result += '【セクション一覧】\n';
+      result += '✅ **Pattern: Structured**\n\n';
+      result += `Detected ${analysis.structured!.sections.length} section(s).\n\n`;
+      result += '【Section List】\n';
       analysis.structured!.sections.forEach((s, index) => {
         result += `${index + 1}. **${s.heading}**\n`;
-        result += `   - ${s.lineCount}行（Line ${s.startLine}〜）\n`;
+        result += `   - ${s.lineCount} lines (from Line ${s.startLine})\n`;
       });
-      result += '\n✓ このMCPサーバと互換性があります。\n';
-      result += '✓ 通常モードで動作します。\n\n';
-      result += '【次のステップ】\n';
-      result += 'そのまま利用できます。すべての機能が使用可能です。';
+      result += '\n✓ Compatible with this MCP server.\n';
+      result += '✓ Operates in normal mode.\n\n';
+      result += '【Next Steps】\n';
+      result += 'Ready to use. All features are available.';
       break;
       
     case 'unstructured':
-      result += '⚠️ **パターン: 非構造化**\n\n';
-      result += `全${analysis.unstructured!.lineCount}行（${analysis.unstructured!.contentLength}文字）\n\n`;
-      result += '【現在の問題】\n';
-      result += 'セクション構造がなく、管理が困難です。\n\n';
-      result += '【構造化のメリット】\n';
-      result += '- ✅ セクション単位での更新・管理\n';
-      result += '- ✅ 競合検出と自動解決\n';
-      result += '- ✅ 履歴管理とロールバック\n';
-      result += '- ✅ 動的な指示書生成（change_context）\n\n';
-      result += '【提案するセクション】\n';
+      result += '⚠️ **Pattern: Unstructured**\n\n';
+      result += `Total ${analysis.unstructured!.lineCount} lines (${analysis.unstructured!.contentLength} characters)\n\n`;
+      result += '【Current Issues】\n';
+      result += 'No section structure, difficult to manage.\n\n';
+      result += '【Benefits of Structuring】\n';
+      result += '- ✅ Section-based updates and management\n';
+      result += '- ✅ Conflict detection and auto-resolution\n';
+      result += '- ✅ History management and rollback\n';
+      result += '- ✅ Dynamic instruction generation (change_context)\n\n';
+      result += '【Suggested Sections】\n';
       analysis.unstructured!.suggestedSections.forEach((s, index) => {
         const conf = Math.round(s.confidence * 100);
-        result += `${index + 1}. **${s.heading}** (信頼度: ${conf}%)\n`;
-        // 内容のプレビュー（最初の2行）
+        result += `${index + 1}. **${s.heading}** (confidence: ${conf}%)\n`;
+        // Content preview (first 2 lines)
         const preview = s.content.split('\n').slice(0, 2).join('\n');
         result += `   ${preview.substring(0, 60)}${preview.length > 60 ? '...' : ''}\n`;
       });
-      result += '\n⚠️ **現在は機能制限モード**\n';
-      result += '指示書の更新・削除・挿入は制限されています。\n\n';
-      result += '【次のステップ】\n';
-      result += '1. 提案を確認: onboarding({ action: "propose" }) ※Phase B実装予定\n';
-      result += '2. または、手動で整理してから再分析\n';
-      result += '3. スキップして読み取り専用で使用: onboarding({ action: "skip" })';
+      result += '\n⚠️ **Currently in restricted mode**\n';
+      result += 'Instruction updates, deletions, and insertions are restricted.\n\n';
+      result += '【Next Steps】\n';
+      result += '1. Review proposal: onboarding({ action: "propose" }) ※Planned for Phase B\n';
+      result += '2. Or manually organize and re-analyze\n';
+      result += '3. Skip and use in read-only mode: onboarding({ action: "skip" })';
       break;
       
     case 'messy':
-      result += '🔴 **パターン: 問題あり**\n\n';
-      result += `${analysis.problems!.length}個の問題が検出されました。\n\n`;
+      result += '🔴 **Pattern: Problematic**\n\n';
+      result += `Detected ${analysis.problems!.length} issue(s).\n\n`;
       
       analysis.problems!.forEach((p, index) => {
-        result += `**[問題${index + 1}] ${p.type === 'contradiction' ? '矛盾' : p.type === 'duplication' ? '重複' : '不明瞭'}**\n`;
+        result += `**[Issue ${index + 1}] ${p.type === 'contradiction' ? 'Contradiction' : p.type === 'duplication' ? 'Duplication' : 'Ambiguity'}**\n`;
         result += `${p.description}\n\n`;
         
-        result += '該当箇所:\n';
+        result += 'Locations:\n';
         p.locations.slice(0, 3).forEach((loc) => {
           result += `  Line ${loc.line}: ${loc.text.substring(0, 70)}${loc.text.length > 70 ? '...' : ''}\n`;
         });
         if (p.locations.length > 3) {
-          result += `  ... 他${p.locations.length - 3}箇所\n`;
+          result += `  ... and ${p.locations.length - 3} more location(s)\n`;
         }
         result += '\n';
       });
       
-      result += '⚠️ **自動処理できません**\n';
-      result += '矛盾や重複があるため、自動マイグレーションは危険です。\n\n';
-      result += '⚠️ **現在は機能制限モード**\n';
-      result += '指示書の更新・削除・挿入は制限されています。\n\n';
-      result += '【次のステップ】\n';
-      result += '1. 上記の問題を手動で修正してください\n';
-      result += '2. 修正後に再分析: onboarding({ action: "analyze" })\n';
-      result += '3. または、スキップして読み取り専用で使用: onboarding({ action: "skip" })\n\n';
-      result += '【修正のヒント】\n';
-      result += '- 矛盾: どちらが最新の方針か確認し、古い方を削除\n';
-      result += '- 重複: セクションを統合するか、片方を削除\n';
-      result += '- 不明瞭: 明確な表現に書き換え';
+      result += '⚠️ **Cannot be processed automatically**\n';
+      result += 'Automatic migration is dangerous due to contradictions or duplications.\n\n';
+      result += '⚠️ **Currently in restricted mode**\n';
+      result += 'Instruction updates, deletions, and insertions are restricted.\n\n';
+      result += '【Next Steps】\n';
+      result += '1. Manually fix the above issues\n';
+      result += '2. Re-analyze after fixing: onboarding({ action: "analyze" })\n';
+      result += '3. Or skip and use in read-only mode: onboarding({ action: "skip" })\n\n';
+      result += '【Fixing Tips】\n';
+      result += '- Contradiction: Confirm which is the latest policy and remove the old one\n';
+      result += '- Duplication: Consolidate sections or remove one\n';
+      result += '- Ambiguity: Rewrite with clear expressions';
       break;
   }
   
@@ -197,85 +197,85 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
 }
 
 /**
- * オンボーディング状態を整形
+ * Format onboarding status
  */
 function formatStatus(status: OnboardingStatus): string {
-  let result = '📋 オンボーディング状態\n';
+  let result = '📋 Onboarding Status\n';
   result += '='.repeat(50) + '\n\n';
   
-  // ステータス表示
+  // Status display
   const statusLabels: Record<string, string> = {
-    'not_started': '未開始',
-    'analyzed': '分析済み',
-    'proposed': '提案済み',
-    'approved': '承認済み',
-    'completed': '完了',
-    'rejected': '拒否',
-    'skipped': 'スキップ'
+    'not_started': 'Not Started',
+    'analyzed': 'Analyzed',
+    'proposed': 'Proposed',
+    'approved': 'Approved',
+    'completed': 'Completed',
+    'rejected': 'Rejected',
+    'skipped': 'Skipped'
   };
   
-  result += `**ステータス**: ${statusLabels[status.status] || status.status}\n`;
+  result += `**Status**: ${statusLabels[status.status] || status.status}\n`;
   
   if (status.pattern) {
     const patternLabels: Record<string, string> = {
-      'clean': 'クリーン（指示書なし）',
-      'structured': '構造化済み',
-      'unstructured': '非構造化',
-      'messy': '問題あり'
+      'clean': 'Clean (no instructions)',
+      'structured': 'Structured',
+      'unstructured': 'Unstructured',
+      'messy': 'Problematic'
     };
-    result += `**パターン**: ${patternLabels[status.pattern] || status.pattern}\n`;
+    result += `**Pattern**: ${patternLabels[status.pattern] || status.pattern}\n`;
   }
   
   if (status.analyzedAt) {
     const date = new Date(status.analyzedAt);
-    result += `**分析日時**: ${date.toLocaleString('ja-JP')}\n`;
+    result += `**Analyzed At**: ${date.toLocaleString('en-US')}\n`;
   }
   
-  result += `**機能制限モード**: ${status.restrictedMode ? '⚠️ ON' : '✅ OFF'}\n\n`;
+  result += `**Restricted Mode**: ${status.restrictedMode ? '⚠️ ON' : '✅ OFF'}\n\n`;
   
-  // 機能制限モードの詳細
+  // Restricted mode details
   if (status.restrictedMode) {
-    result += '【利用可能な機能】\n';
-    result += '- ✅ guidance (ガイド表示)\n';
-    result += '- ✅ instructions_structure: read (読み取りのみ)\n';
-    result += '- ✅ instructions_structure: detect-conflicts (競合検出)\n';
-    result += '- ✅ project_context (プロジェクト文脈管理)\n';
-    result += '- ✅ feedback (フィードバック記録)\n';
-    result += '- ✅ change_context: read/list-history/show-diff (状態確認のみ)\n\n';
+    result += '【Available Features】\n';
+    result += '- ✅ guidance (display guide)\n';
+    result += '- ✅ instructions_structure: read (read-only)\n';
+    result += '- ✅ instructions_structure: detect-conflicts (conflict detection)\n';
+    result += '- ✅ project_context (project context management)\n';
+    result += '- ✅ feedback (feedback recording)\n';
+    result += '- ✅ change_context: read/list-history/show-diff (status check only)\n\n';
     
-    result += '【制限される機能】\n';
+    result += '【Restricted Features】\n';
     result += '- ❌ instructions_structure: update/delete/insert\n';
-    result += '- ❌ change_context: update/reset/rollback (指示書変更を伴う操作)\n\n';
+    result += '- ❌ change_context: update/reset/rollback (operations that modify instructions)\n\n';
     
-    result += '【制限解除の方法】\n';
+    result += '【How to Lift Restrictions】\n';
     if (status.pattern === 'unstructured') {
-      result += '- マイグレーション提案を確認: onboarding({ action: "propose" }) ※Phase B実装予定\n';
-      result += '- または、手動で整理してから再分析: onboarding({ action: "analyze" })\n';
-      result += '- スキップして読み取り専用継続: onboarding({ action: "skip" })\n';
+      result += '- Review migration proposal: onboarding({ action: "propose" }) ※Planned for Phase B\n';
+      result += '- Or manually organize and re-analyze: onboarding({ action: "analyze" })\n';
+      result += '- Skip and continue in read-only mode: onboarding({ action: "skip" })\n';
     } else if (status.pattern === 'messy') {
-      result += '- 問題を手動で修正してから再分析: onboarding({ action: "analyze" })\n';
-      result += '- スキップして読み取り専用継続: onboarding({ action: "skip" })\n';
+      result += '- Manually fix issues and re-analyze: onboarding({ action: "analyze" })\n';
+      result += '- Skip and continue in read-only mode: onboarding({ action: "skip" })\n';
     }
   } else {
-    result += '✅ すべての機能が利用可能です。\n';
+    result += '✅ All features are available.\n';
   }
   
-  // ロールバック情報
+  // Rollback information
   if (status.canRollback && status.backupPath && status.rollbackUntil) {
-    result += '\n【ロールバック】\n';
+    result += '\n【Rollback】\n';
     const rollbackDate = new Date(status.rollbackUntil);
-    result += `期限: ${rollbackDate.toLocaleString('ja-JP')}\n`;
-    result += `バックアップ: ${status.backupPath}\n`;
-    result += 'ロールバック実行: onboarding({ action: "rollback" }) ※Phase C実装予定\n';
+    result += `Deadline: ${rollbackDate.toLocaleString('en-US')}\n`;
+    result += `Backup: ${status.backupPath}\n`;
+    result += 'Execute rollback: onboarding({ action: "rollback" }) ※Planned for Phase C\n';
   }
   
-  // 問題の概要
+  // Problem summary
   if (status.problems && status.problems.length > 0) {
-    result += '\n【検出された問題】\n';
+    result += '\n【Detected Issues】\n';
     status.problems.forEach((p, index) => {
-      result += `${index + 1}. ${p.description} (${p.locations.length}箇所)\n`;
+      result += `${index + 1}. ${p.description} (${p.locations.length} location(s))\n`;
     });
-    result += '\n詳細: onboarding({ action: "analyze" })\n';
+    result += '\nDetails: onboarding({ action: "analyze" })\n';
   }
   
   return result;

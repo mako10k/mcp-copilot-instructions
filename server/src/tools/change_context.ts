@@ -13,14 +13,14 @@ interface ChangeContextArgs {
   action: 'update' | 'read' | 'reset' | 'rollback' | 'list-history' | 'show-diff' | 'cleanup-history';
   state?: Partial<DevelopmentContext>;
   autoRegenerate?: boolean;
-  // rollback用
+  // For rollback
   timestamp?: string | number;  // ISO timestamp or index (0 = latest)
-  // list-history用
+  // For list-history
   limit?: number;
-  // show-diff用
+  // For show-diff
   from?: string | number;
   to?: string | number;
-  // cleanup-history用
+  // For cleanup-history
   daysToKeep?: number;
 }
 
@@ -68,11 +68,11 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
     if (restricted) {
       return JSON.stringify({
         success: false,
-        error: '❌ 機能制限モード: このアクションは利用できません。\n\n' +
-               'オンボーディングを完了するか、読み取り専用モードで使用してください。\n\n' +
-               '【詳細確認】\n' +
+        error: '❌ Restricted Mode: This action is not available.\n\n' +
+               'Please complete onboarding or use in read-only mode.\n\n' +
+               '[Check Details]\n' +
                'onboarding({ action: "status" })\n\n' +
-               '【オンボーディング】\n' +
+               '[Onboarding]\n' +
                'onboarding({ action: "analyze" })'
       }, null, 2);
     }
