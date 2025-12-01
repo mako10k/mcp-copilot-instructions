@@ -4,10 +4,10 @@
 			"type": "stdio",
 			"command": "node",
 			"args": [
-				"server/dist/index.js"
+				"server/dist/src/index.js"
 			],
 			"dev": {
-				"watch": "server/dist/*.js",
+				"watch": "server/dist/src/*.js",
 			},
 			"env": {
 				"NODE_ENV": "production"
