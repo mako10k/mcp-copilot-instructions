@@ -242,30 +242,25 @@ export async function writeWithConflictCheck(
   content: string,
   expectedState: FileState
 ): Promise<{ success: boolean; conflict?: ConflictInfo }> {
-  try {
-    // Get current file state
-    const current = await readWithState(filePath);
+  // Get current file state
+  const current = await readWithState(filePath);
 
-    // Detect external changes by comparing hash values
-    if (current.state.hash !== expectedState.hash) {
-      return {
-        success: false,
-        conflict: {
-          message: '外部変更が検知されました。ファイルが別のプロセスまたは人間開発者によって変更されています。',
-          expectedHash: expectedState.hash,
-          currentHash: current.state.hash,
-          filePath: filePath,
-        },
-      };
-    }
-
-    // 競合なし、書き込み実行
-    await fs.writeFile(filePath, content, 'utf-8');
-    return { success: true };
-  } catch (error) {
-    // ファイルが存在しない場合など、エラーをそのままスロー
-    throw error;
+  // Detect external changes by comparing hash values
+  if (current.state.hash !== expectedState.hash) {
+    return {
+      success: false,
+      conflict: {
+        message: '外部変更が検知されました。ファイルが別のプロセスまたは人間開発者によって変更されています。',
+        expectedHash: expectedState.hash,
+        currentHash: current.state.hash,
+        filePath: filePath,
+      },
+    };
   }
+
+  // 競合なし、書き込み実行
+  await fs.writeFile(filePath, content, 'utf-8');
+  return { success: true };
 }
 
 /**

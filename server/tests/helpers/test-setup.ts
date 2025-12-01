@@ -43,7 +43,7 @@ export async function readFile(filePath: string): Promise<string> {
   return await fs.readFile(filePath, 'utf-8');
 }
 
-export async function cleanupTestData(ctx: TestContext): Promise<void> {
+export async function cleanupTestData(): Promise<void> {
   // Only cleanup if explicitly needed - usually we want to keep test data
   // This is here as a utility if tests need cleanup
 }

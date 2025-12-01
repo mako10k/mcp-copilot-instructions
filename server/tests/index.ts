@@ -70,7 +70,7 @@ async function main() {
       printHelp();
       break;
 
-    default:
+    default: {
       // Try to run specific test by name
       const result = await runner.runByName(command);
       if (result === null) {
@@ -79,6 +79,7 @@ async function main() {
         process.exit(1);
       }
       process.exit(result.passed ? 0 : 1);
+    }
   }
 }
 

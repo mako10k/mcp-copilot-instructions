@@ -7,9 +7,6 @@ import * as crypto from 'crypto';
 import {
   readInstructionsFile,
   writeInstructionsFile,
-  readInstructionsFileWithState,
-  writeInstructionsFileWithConflictCheck,
-  FileState,
 } from './fileSystem.js';
 
 export interface Section {
@@ -149,7 +146,6 @@ export async function updateSection(
     // expectedHashが指定されている場合、競合チェック
     if (expectedHash && initialHash !== expectedHash) {
       // 外部変更を検出 - 競合マーカーを挿入
-      const timestamp = new Date().toISOString();
       return await insertConflictMarkersManually(
         heading,
         initialTargetSection.content.trim(),

@@ -15,7 +15,7 @@ import { DevelopmentContext } from './generateInstructions.js';
  * @param context Development state
  * @returns Meta-instruction Markdown string
  */
-export function generateMetaInstruction(context: DevelopmentContext): string {
+export function generateMetaInstruction(): string {
   const sections: string[] = [];
   
   // Header

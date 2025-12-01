@@ -12,7 +12,7 @@
  */
 
 import { z } from 'zod';
-import type { Goal, GoalStatus, GoalManagementParams, GoalManagementResult } from '../types/goals.js';
+import type { Goal, GoalManagementParams, GoalManagementResult } from '../types/goals.js';
 import {
   isInitialized,
   readHierarchy,

@@ -31,7 +31,7 @@ export class TestRunner {
 
     this.results = [];
 
-    for (const [name, suite] of this.suites) {
+    for (const [, suite] of this.suites) {
       const result = await this.runSuite(suite);
       this.results.push(result);
     }
