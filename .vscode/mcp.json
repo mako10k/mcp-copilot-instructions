@@ -2,14 +2,13 @@
 	"servers": {
 		"copilot-instructions": {
 			"type": "stdio",
-			"command": "npx",
+			"command": "node",
 			"args": [
-				"ts-node",
-				"server/src/index.ts"
+				"server/dist/index.js"
 			],
-            "dev": {
-                "watch": "server/src/**/*.ts"
-            }
+			"env": {
+				"NODE_ENV": "production"
+			}
 		}
 	},
 	"inputs": []

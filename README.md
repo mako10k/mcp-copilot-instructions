@@ -30,6 +30,14 @@ In this project, careful attention is required regarding who "user" refers to:
 
 Unless specifically noted, "user" refers to **Copilot (LLM) itself**.
 
+## Quick Start
+```bash
+# Build server
+cd server && npm run build
+
+# Server will auto-start via MCP (no manual start needed)
+```
+
 ## Main Documentation
 - Design: `docs/mcp-server-design.md`
 - Operations: `docs/operation-scenarios.md`
