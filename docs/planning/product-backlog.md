@@ -333,7 +333,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
 ## 🟡 Medium Priority (Phase 3)
 
-### PBI-004: user_feedback → developer_feedback への改名
+### PBI-004: feedback ツールの設計
 
 **カテゴリ**: API Design / Terminology  
 **優先度**: 🟡 Medium  
@@ -492,7 +492,7 @@ MCPツール群の統合テスト、GitHub Actions設定。
 **目標**: UX改善、CRUD完成、適応的機能
 
 **対象項目**:
-- 🟡 PBI-004: developer_feedback改名
+- 🟡 PBI-004: feedbackツール設計
 - 🟡 PBI-005: サマリーカスタマイズ
 - 🟡 PBI-006: instructions_structure delete/insert
 - 🟡 S6: adaptive_instructions

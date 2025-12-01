@@ -403,11 +403,11 @@ generate_instructions({
 
 ---
 
-#### 2.3.3 `user_feedback` (将来実装)
+#### 2.3.3 `feedback` (将来実装)
 
-**目的**: **人間開発者**の感情、指摘、フィードバックを記録し、対処方法を管理
+**目的**: **人間開発者の指摘**および**LLM自身が重要と判断した観察**を記録し、対処方法を管理
 
-**注意**: 将来的には`developer_feedback`に改名し、Copilot自身の観察を記録する`copilot_observation`ツールを別途追加する予定。
+**注意**: `feedback`ツールは、人間開発者からの明示的なフィードバックと、Copilot (LLM)が自律的に「これは重要」と判断した内容の両方を記録します。
 
 **パラメータ**:
 ```typescript
@@ -915,7 +915,7 @@ generate_instructions({ action: "generate" })
 - ブランチ戦略との統合（feature/xxx → 関連指示のみ、`.copilot-instructions/branches/`）
 - `instructions_structure` (create, delete) - 完全なCRUD
 - 統計とアナリティクス機能（指示の効果測定、スコアリングルールの自動調整）
-- `developer_feedback` ツール（人間開発者の強い指摘を記録 → criticalFeedback フラグ自動付与）
+- `feedback` ツール（人間開発者の強い指摘 + LLMの重要判断を記録 → criticalFeedback フラグ自動付与）
 
 ---
 
