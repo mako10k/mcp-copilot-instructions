@@ -83,6 +83,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'number',
               description: '最大優先度（readでのフィルタ用）',
             },
+            format: {
+              type: 'string',
+              enum: ['summary', 'full'],
+              description: '表示形式（summary: 簡潔表示[デフォルト], full: 詳細JSON）',
+            },
           },
           required: ['action'],
         },

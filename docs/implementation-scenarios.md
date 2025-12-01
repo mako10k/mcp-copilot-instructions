@@ -418,3 +418,133 @@ if (args.category !== undefined) updates.category = args.category;
 - [x] filter (priority): 優先度範囲での絞り込み
 - [x] エラーハンドリング: 存在しないIDに対して適切なエラーメッセージ
 - [x] データ整合性: `action`フィールドなど不要なデータが混入しない
+
+---
+
+## シナリオ5: 実プロジェクトでの活用とUX改善
+
+### 目標
+- 本プロジェクト自身をMCPツールで管理し、実用性を検証
+- 実際の使用感から改善点を発見してフィードバック
+- 頻繁に使う操作を最適化してユーザビリティ向上
+
+### 実施内容
+
+#### 1. プロジェクトコンテキストの登録
+本プロジェクトの設計原則や実装パターンを`project_context`に登録:
+
+- **constraints**: MCPツールはaction引数でCRUD統一
+- **implementation-pattern**: 
+  - ファイルI/Oは__dirname基準のパス解決
+  - JSON永続化はload/saveで抽象化
+  - Markdown編集はunified/remark-parseでAST操作
+- **conventions**:
+  - データファイルは.gitignoreで除外
+  - コンテキストIDはctx-timestamp-randomで一意性保証
+
+#### 2. 指示書の更新
+`instructions_structure`で`.github/copilot-instructions.md`に「実装状況」セクションを追加:
+- Scenario 1-5の完了状態を記録
+- 進行中のタスクを可視化
+
+#### 3. 実用テストで発見した課題
+
+**課題1**: JSON全件表示は情報過多
+- 問題: 6件のコンテキストでも画面が埋まる
+- 影響: 全体像の把握が困難、IDを探すのに時間がかかる
+
+**課題2**: 頻繁に使う操作の繰り返し入力
+- 問題: カテゴリフィルタを何度も指定
+- 影響: 同じパラメータを繰り返し入力する手間
+
+#### 4. UX改善の実装
+
+**改善1: サマリー表示形式の追加**
+
+`ReadContextArgs`に`format`オプション追加:
+```typescript
+interface ReadContextArgs {
+  action: 'read';
+  // ... 既存のフィルタパラメータ
+  format?: 'summary' | 'full';
+}
+```
+
+**summary形式（デフォルト）**:
+```
+登録済みプロジェクト文脈（6件）:
+
+1. [constraints] MCPツールはaction引数でCRUD統一 (優先度:10) #architecture #design-principle
+   ID: ctx-1764564670175-qqahhjb0s
+
+2. [implementation-pattern] ファイルI/Oは__dirname基準のパス解決 (優先度:8) #file-io
+   ID: ctx-1764565588703-5d7a1mrqr
+...
+```
+
+**full形式**:
+- 従来通りのJSON全件表示
+- 詳細情報が必要な時のみ`format: 'full'`を指定
+
+#### 5. 実装の効果
+
+**効果測定**:
+- サマリー表示: 1画面に収まる情報量（6件 → 15行程度）
+- カテゴリフィルタ併用: 必要な情報に素早くアクセス
+- ID確認: サマリーの最終行にIDを表示、コピーしやすい
+
+**学んだパターン**:
+1. デフォルトは最も頻繁に使うケースに最適化
+2. 詳細情報は明示的にリクエストする設計
+3. カテゴリ/タグによる分類は実用上必須
+
+### 実用テストの記録
+
+```typescript
+// 実際に実行した操作
+
+// 1. プロジェクトコンテキスト6件登録
+await projectContext({ action: 'create', category: 'constraints', ... });
+await projectContext({ action: 'create', category: 'implementation-pattern', ... });
+// ... 計6件
+
+// 2. カテゴリ別確認（サマリー表示が見やすい）
+await projectContext({ action: 'read', category: 'implementation-pattern' });
+// → 3件のサマリーが簡潔に表示
+
+// 3. 指示書更新
+await instructionsStructure({ action: 'update', heading: '実装状況', content: ... });
+await instructionsStructure({ action: 'read' });
+// → 6セクションに増加
+
+// 4. 知見の記録
+await projectContext({
+  action: 'create',
+  category: 'lessons-learned',
+  title: 'read結果のデフォルトはsummary表示が適切',
+  ...
+});
+```
+
+### 得られた知見
+
+#### 知見1: デフォルト動作の重要性
+- ユーザーは最も頻繁な操作にパラメータを指定したくない
+- `format`のデフォルトを`summary`にすることで、即座に使いやすくなる
+
+#### 知見2: フィルタは必須機能
+- カテゴリ/タグによる分類がないと、コンテキスト数の増加に対応できない
+- 実プロジェクトでは10件以上のコンテキストが普通に発生する
+
+#### 知見3: ツール間連携の実用性
+- `project_context`で管理 → `instructions_structure`で参照
+- 複数ツールを組み合わせることで、構造化された知識管理が実現
+
+### 成功基準
+
+- [x] 本プロジェクトの制約・原則を`project_context`に登録（6件）
+- [x] 指示書に「実装状況」セクション追加、Scenario 1-5記録
+- [x] カテゴリフィルタで目的のコンテキストに素早くアクセス
+- [x] UX改善: サマリー表示形式をデフォルト化
+- [x] 実用テストの知見を`lessons-learned`カテゴリで記録（2件）
+- [x] format='full'で詳細情報にアクセス可能

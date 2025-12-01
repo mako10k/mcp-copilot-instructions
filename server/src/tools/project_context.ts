@@ -22,6 +22,7 @@ interface ReadContextArgs {
   tags?: string[];
   minPriority?: number;
   maxPriority?: number;
+  format?: 'summary' | 'full';
 }
 
 interface UpdateContextArgs {
@@ -62,30 +63,50 @@ export async function projectContext(args: ProjectContextArgs) {
     }
     case 'read': {
       // フィルタが指定されている場合
+      let contexts;
       if (
         args.category ||
         args.tags ||
         args.minPriority !== undefined ||
         args.maxPriority !== undefined
       ) {
-        const filtered = await filterContexts({
+        contexts = await filterContexts({
           category: args.category,
           tags: args.tags,
           minPriority: args.minPriority,
           maxPriority: args.maxPriority,
         });
-        if (filtered.length === 0) {
+        if (contexts.length === 0) {
           return 'フィルタ条件に一致するプロジェクト文脈が見つかりませんでした。';
         }
-        return `フィルタ結果（${filtered.length}件）:\n\n${JSON.stringify(filtered, null, 2)}`;
+      } else {
+        // フィルタなしの場合は全件取得
+        contexts = await loadContexts();
+        if (contexts.length === 0) {
+          return 'プロジェクト文脈が登録されていません。';
+        }
       }
 
-      // フィルタなしの場合は全件取得
-      const contexts = await loadContexts();
-      if (contexts.length === 0) {
-        return 'プロジェクト文脈が登録されていません。';
+      // 表示形式の選択
+      const format = args.format || 'summary';
+      if (format === 'summary') {
+        const header = args.category || args.tags
+          ? `フィルタ結果（${contexts.length}件）:`
+          : `登録済みプロジェクト文脈（${contexts.length}件）:`;
+        const summary = contexts
+          .map(
+            (ctx, idx) =>
+              `${idx + 1}. [${ctx.category}] ${ctx.title} (優先度:${ctx.priority}) #${ctx.tags.join(' #')}\n   ID: ${ctx.id}`
+          )
+          .join('\n\n');
+        return `${header}\n\n${summary}`;
+      } else {
+        // full形式（従来のJSON表示）
+        const header = args.category || args.tags
+          ? `フィルタ結果（${contexts.length}件）:`
+          : `登録済みプロジェクト文脈（${contexts.length}件）:`;
+        return `${header}\n\n${JSON.stringify(contexts, null, 2)}`;
       }
-      return `登録済みプロジェクト文脈（${contexts.length}件）:\n\n${JSON.stringify(contexts, null, 2)}`;
     }
     case 'update': {
       const updates: Partial<Omit<typeof args, 'action' | 'id'>> = {};
