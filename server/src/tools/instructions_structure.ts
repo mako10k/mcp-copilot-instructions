@@ -8,6 +8,7 @@ import {
 } from '../utils/markdownAst';
 import { readInstructionsFileWithState } from '../utils/fileSystem';
 import { withLock } from '../utils/lockManager';
+import { isRestrictedMode } from '../utils/onboardingStatusManager';
 
 interface ReadStructureArgs {
   action: 'read';
@@ -53,6 +54,19 @@ type InstructionsStructureArgs =
   | InsertStructureArgs;
 
 export async function instructionsStructure(args: InstructionsStructureArgs) {
+  // 機能制限モードのチェック（read と detect-conflicts は許可）
+  if (args.action !== 'read' && args.action !== 'detect-conflicts') {
+    const restricted = await isRestrictedMode();
+    if (restricted) {
+      return '❌ 機能制限モード: このアクションは利用できません。\n\n' +
+             'オンボーディングを完了するか、読み取り専用モードで使用してください。\n\n' +
+             '【詳細確認】\n' +
+             'onboarding({ action: "status" })\n\n' +
+             '【オンボーディング】\n' +
+             'onboarding({ action: "analyze" })';
+    }
+  }
+  
   switch (args.action) {
     case 'read': {
       const sections = await readInstructionsSections();

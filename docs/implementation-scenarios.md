@@ -2817,57 +2817,92 @@ Copilot: 「承認を拒否しました。
 #### 新規実装が必要
 
 **1. onboarding ツール**:
-- ✅ `analyze`: 既存指示書の分析と分類
-- ✅ `propose`: マイグレーション提案
-- ✅ `approve`: ユーザー承認の記録
-- ✅ `migrate`: 安全なマイグレーション実行
-- ✅ `rollback`: マイグレーション取り消し
-- ✅ `status`: オンボーディング状態確認
+- ✅ `analyze`: 既存指示書の分析と分類 ← **完了**
+- 🟡 `propose`: マイグレーション提案 ← Phase B（未実装）
+- 🟡 `approve`: ユーザー承認の記録 ← Phase B（未実装）
+- 🟡 `migrate`: 安全なマイグレーション実行 ← Phase C（未実装）
+- 🟡 `rollback`: マイグレーション取り消し ← Phase C（未実装）
+- ✅ `status`: オンボーディング状態確認 ← **完了**
+- ✅ `skip`: オンボーディングスキップ ← **完了**
 
-**2. 分析ロジック**:
-- セクション構造の検出（正規表現ベース）
-- 矛盾検出（キーワードベース）
-- 重複検出（見出しの類似度）
-- 非構造化コンテンツの自然言語処理（LLM活用）
+**2. 分析ロジック**: ✅ **完了**
+- ✅ セクション構造の検出（正規表現ベース）
+  - `/^## (.+)$/m` で見出し抽出
+- ✅ 矛盾検出（キーワードベース）
+  - any型: "any禁止" vs "anyOK"
+  - 命名: "camelCase" vs "snake_case"
+  - テスト: "Jest" vs "Vitest"
+- ✅ 重複検出（見出しの完全一致）
+- ✅ 非構造化コンテンツのセクション提案（キーワードベース）
+  - TypeScript規約, テストパターン, 命名規則, etc.
+  - 信頼度スコアリング（0-1）
 
 **3. マイグレーション実行**:
 - バックアップ作成（タイムスタンプ付き）
 - アトミックな書き換え
 - ロールバック機能（24時間保持）
 
-**4. 機能制限モード**:
-- オンボーディング状態の永続化（`.copilot-state/onboarding-status.json`）
-- ツールごとのアクセス制御
-- 制限モード時のメッセージ
+**4. 機能制限モード**: ✅ **完了**
+- ✅ オンボーディング状態の永続化（`.copilot-state/onboarding.json`）
+  - Schema: version, status, pattern, analyzedAt, problems, restrictedMode, canRollback
+- ✅ ツールごとのアクセス制御
+  - 制限: instructions_structure (update/delete/insert/resolve-conflict), change_context (update/reset/rollback)
+  - 許可: guidance, project_context, feedback（全操作）, read系操作
+- ✅ 制限モード時のメッセージ
+  - エラーメッセージで onboarding({ action: "status" }) へ誘導
 
-**5. ユーザー通知**:
-- guidance ツールの拡張（オンボーディング状態の表示）
-- 初回実行時の自動分析
-- 制限モード時の明確なメッセージ
+**5. ユーザー通知**: ✅ **完了**
+- ✅ guidance ツールの拡張（オンボーディング状態の表示）
+  - current-state アクションで status/pattern/restrictedMode 表示
+- ✅ 制限モード時の明確なメッセージ
+  - 制限される機能と利用可能な機能の一覧
+  - 解除方法の案内
 
-#### 既存機能の拡張
+#### 既存機能の拡張 ✅ **完了**
 
-**1. instructions_structure**:
-- 制限モードでの動作（read のみ許可）
-- オンボーディング状態のチェック
+**1. instructions_structure**: ✅
+- ✅ 制限モードでの動作（read/detect-conflicts のみ許可）
+- ✅ オンボーディング状態のチェック（isRestrictedMode）
+- ✅ エラーメッセージで次の手順を案内
 
-**2. change_context**:
-- 制限モードでの動作（実行不可）
-- オンボーディング完了後に有効化
+**2. change_context**: ✅
+- ✅ 制限モードでの動作（read/list-history/show-diff/cleanup-history のみ許可）
+- ✅ オンボーディング完了後に update/reset/rollback 有効化
 
-**3. guidance**:
-- オンボーディング状態の表示
-- 次のステップの案内
+**3. guidance**: ✅
+- ✅ オンボーディング状態の表示（current-state アクション拡張）
+- ✅ 次のステップの案内（not_started 時に analyze 実行を促す）
+- ✅ 制限モード時の機能一覧表示
 
 ---
 
 ### 成功基準
 
-#### Phase A（検出と分析）
-- [ ] 既存指示書の存在確認
-- [ ] 4パターンの分類（clean/structured/unstructured/messy）
-- [ ] 問題点の検出（矛盾/重複/不明瞭）
-- [ ] 推奨アクションの提示
+#### Phase A（検出と分析） ✅ **完了 (2025-12-01)**
+- [x] 既存指示書の存在確認
+- [x] 4パターンの分類（clean/structured/unstructured/messy）
+- [x] 問題点の検出（矛盾/重複/不明瞭）
+- [x] 推奨アクションの提示
+
+**実装ファイル**:
+- `server/src/utils/onboardingStatusManager.ts` (170行)
+  - 状態管理: getOnboardingStatus, saveOnboardingStatus
+  - 機能チェック: isRestrictedMode, isOnboardingCompleted
+  - 状態変更: skipOnboarding, completeOnboarding
+- `server/src/utils/instructionsAnalyzer.ts` (367行)
+  - analyzeInstructions: 4パターン分類ロジック
+  - extractSections: ## セクション抽出
+  - detectProblems: 矛盾・重複検出
+  - suggestSections: 非構造化コンテンツのセクション提案
+- `server/src/tools/onboarding.ts` (280行)
+  - handleAnalyze: 分析実行と状態更新
+  - handleStatus: 現在の状態表示
+  - handleSkip: オンボーディングスキップ
+  - formatAnalysisResult: 4パターン用フォーマッター
+- `server/test-onboarding-phase-a.ts` (410行)
+  - 7シナリオのテスト実装
+  - バックアップ/復元機能
+  - 全テスト成功（7/7）
 
 #### Phase B（提案）
 - [ ] マイグレーション計画の生成
@@ -2881,11 +2916,28 @@ Copilot: 「承認を拒否しました。
 - [ ] ロールバック機能
 - [ ] 24時間以内のロールバック保証
 
-#### Phase D（制限モード）
-- [ ] オンボーディング状態の永続化
-- [ ] ツールごとのアクセス制御
-- [ ] 制限モード時のメッセージ
-- [ ] 承認後の通常モード移行
+#### Phase D（制限モード） ✅ **完了 (2025-12-01)**
+- [x] オンボーディング状態の永続化
+- [x] ツールごとのアクセス制御
+- [x] 制限モード時のメッセージ
+- [x] 承認後の通常モード移行
+
+**実装ファイル**:
+- `server/src/tools/instructions_structure.ts`
+  - 制限チェック: update/delete/insert/resolve-conflict の前に isRestrictedMode() チェック
+  - エラーメッセージ: onboarding へ誘導
+  - 許可: read, detect-conflicts（読み取り専用操作）
+- `server/src/tools/change_context.ts`
+  - 制限チェック: update/reset/rollback の前に isRestrictedMode() チェック
+  - 許可: read, list-history, show-diff, cleanup-history（読み取り専用操作）
+- `server/src/tools/guidance.ts`
+  - current-state アクション拡張
+  - オンボーディング状態の表示（status, pattern, restrictedMode）
+  - 制限される機能と利用可能な機能の一覧
+  - not_started 時の analyze 実行案内
+- `server/src/index.ts`
+  - onboarding ツールの MCP スキーマ登録
+  - action enum: analyze, status, skip, propose, approve, migrate, rollback
 
 ---
 

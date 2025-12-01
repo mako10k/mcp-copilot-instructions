@@ -8,6 +8,7 @@ import {
   cleanupOldHistory,
   HistoryEntry,
 } from '../utils/historyManager';
+import { isRestrictedMode } from '../utils/onboardingStatusManager';
 
 interface ChangeContextArgs {
   action: 'update' | 'read' | 'reset' | 'rollback' | 'list-history' | 'show-diff' | 'cleanup-history';
@@ -60,6 +61,23 @@ async function saveContext(context: DevelopmentContext): Promise<void> {
  */
 export async function changeContext(args: ChangeContextArgs): Promise<string> {
   const action = args.action;
+  
+  // 機能制限モードのチェック（read, list-history, show-diff, cleanup-history は許可）
+  const readOnlyActions = ['read', 'list-history', 'show-diff', 'cleanup-history'];
+  if (!readOnlyActions.includes(action)) {
+    const restricted = await isRestrictedMode();
+    if (restricted) {
+      return JSON.stringify({
+        success: false,
+        error: '❌ 機能制限モード: このアクションは利用できません。\n\n' +
+               'オンボーディングを完了するか、読み取り専用モードで使用してください。\n\n' +
+               '【詳細確認】\n' +
+               'onboarding({ action: "status" })\n\n' +
+               '【オンボーディング】\n' +
+               'onboarding({ action: "analyze" })'
+      }, null, 2);
+    }
+  }
   
   if (action === 'read') {
     const context = await loadContext();

@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "status": "analyzed",
+  "pattern": "unstructured",
+  "analyzedAt": "2025-12-01T08:28:03.361Z",
+  "restrictedMode": true,
+  "canRollback": false
+}

@@ -9,6 +9,7 @@ import { projectContext } from './tools/project_context';
 import { instructionsStructure } from './tools/instructions_structure';
 import { changeContext } from './tools/change_context';
 import { feedback } from './tools/feedback';
+import { onboarding } from './tools/onboarding';
 
 const server = new Server(
   {
@@ -218,6 +219,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: 'onboarding',
+        description:
+          '既存プロジェクトへのMCPサーバ導入を支援。既存指示書の分析、' +
+          'パターン検出（clean/structured/unstructured/messy）、マイグレーション提案、安全な適用。',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['analyze', 'status', 'skip', 'propose', 'approve', 'migrate', 'rollback'],
+              description:
+                'アクション: analyze(既存指示書の分析) / status(現在の状態確認) / skip(オンボーディングをスキップ) / ' +
+                'propose(マイグレーション提案作成) / approve(提案を承認) / migrate(マイグレーション実行) / rollback(元に戻す)',
+            },
+          },
+          required: ['action'],
+        },
+      },
+      {
         name: 'feedback',
         description:
           '指示書に対する重要なフィードバックを記録。' +
@@ -292,6 +312,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case 'instructions_structure': {
         const result = await instructionsStructure(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+      case 'onboarding': {
+        const result = await onboarding(args as any);
         return {
           content: [{ type: 'text', text: result }],
         };
