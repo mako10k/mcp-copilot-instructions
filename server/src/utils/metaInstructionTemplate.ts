@@ -1,143 +1,143 @@
 /**
  * metaInstructionTemplate.ts
- * メタ指示セクションの生成ロジック
+ * Meta-instruction section generation logic
  * 
- * 責務:
- * - 開発状態に応じたメタ指示の生成
- * - ツール活用ガイドのテンプレート提供
+ * Responsibilities:
+ * - Generate meta-instructions based on development state
+ * - Provide tool usage guide templates
  */
 
 import { DevelopmentContext } from './generateInstructions';
 
 /**
- * メタ指示セクションを生成
+ * Generate meta-instruction section
  * 
- * @param context 開発状態
- * @returns メタ指示のMarkdown文字列
+ * @param context Development state
+ * @returns Meta-instruction Markdown string
  */
 export function generateMetaInstruction(context: DevelopmentContext): string {
   const sections: string[] = [];
   
-  // ヘッダー
-  sections.push('## meta: ツール活用ガイド');
+  // Header
+  sections.push('## meta: Tool Usage Guide');
   sections.push('');
-  sections.push('このMCPサーバは、指示書の外部記憶と動的生成を担います。以下のツールを適切に活用してください。');
-  sections.push('');
-  
-  // 開発状態の管理
-  sections.push('### 開発状態の管理');
-  sections.push('');
-  sections.push('開発フェーズや作業内容が変わる場合、必ず `change_context` ツールで状態を更新してください。');
-  sections.push('');
-  sections.push('**使用タイミング**:');
-  sections.push('- フェーズ変更時（開発→テスト、テスト→デバッグ、など）');
-  sections.push('- 作業フォーカスの変更時（API実装→認証実装、など）');
-  sections.push('');
-  sections.push('**効果**: 状態変更後、この指示書は自動的に再生成され、現在のフェーズに適した指示が優先されます。');
+  sections.push('This MCP server handles external storage and dynamic generation of instructions. Use the following tools appropriately.');
   sections.push('');
   
-  // 開発ルールの登録
-  sections.push('### 開発ルールの登録');
+  // Development State Management
+  sections.push('### Development State Management');
   sections.push('');
-  sections.push('ユーザーから新しい規約・ルール・制約の指示を受けた場合、その場限りの対応ではなく、必ず `project_context` に永続化してください。');
+  sections.push('When development phase or work focus changes, always update the state with `change_context` tool.');
   sections.push('');
-  sections.push('**登録前の確認**:');
-  sections.push('1. 既存ルールを検索（`project_context read`）');
-  sections.push('2. 矛盾がないか確認');
-  sections.push('3. 矛盾がある場合、ユーザーに確認を求める');
+  sections.push('**When to Use**:');
+  sections.push('- Phase transitions (development→testing, testing→debugging, etc.)');
+  sections.push('- Work focus changes (API implementation→authentication, etc.)');
   sections.push('');
-  sections.push('**重要**: 一度登録したルールは、以降すべてのセッションで参照されます。散逸を防ぐため、必ず登録してください。');
-  sections.push('');
-  
-  // 指示書の自己認識
-  sections.push('### 指示書の自己認識');
-  sections.push('');
-  sections.push('`instructions_structure` ツールは、**この指示書自体**を変更するツールです。使用時は、以下を明示してください。');
-  sections.push('');
-  sections.push('**注意事項**:');
-  sections.push('- update/delete/insert実行時は、変更内容を明示');
-  sections.push('- 「この指示書が変更されます」と警告');
-  sections.push('- 外部変更がある場合、競合検出機能（`detect-conflicts`）が自動作動');
+  sections.push('**Effect**: After state change, this instruction file is automatically regenerated with prioritized instructions for the current phase.');
   sections.push('');
   
-  // 既存ルールとの整合性確認
-  sections.push('### 既存ルールとの整合性確認');
+  // Development Rule Registration
+  sections.push('### Development Rule Registration');
   sections.push('');
-  sections.push('新しい指示を受けた際、既存の `project_context` と矛盾しないか必ず確認してください。');
+  sections.push('When receiving new conventions, rules, or constraints from users, always persist them to `project_context` instead of applying temporarily.');
   sections.push('');
-  sections.push('**確認手順**:');
-  sections.push('1. 関連カテゴリを検索（`project_context read`）');
-  sections.push('2. 矛盾を検出した場合、ユーザーに選択肢を提示');
-  sections.push('3. ユーザーの選択に従って、既存ルールを更新または維持');
+  sections.push('**Pre-registration Check**:');
+  sections.push('1. Search existing rules (`project_context read`)');
+  sections.push('2. Check for contradictions');
+  sections.push('3. If contradictions exist, ask user for confirmation');
+  sections.push('');
+  sections.push('**Important**: Once registered, rules are referenced in all subsequent sessions. Always register to prevent loss.');
   sections.push('');
   
-  // 既存プロジェクトへの導入
-  sections.push('### 既存プロジェクトへの導入');
+  // Self-awareness of Instructions
+  sections.push('### Self-awareness of Instructions');
   sections.push('');
-  sections.push('初回実行時、または既存の `copilot-instructions.md` がある場合、`onboarding` ツールで分析してください。');
+  sections.push('`instructions_structure` tool modifies **this instruction file itself**. When using, explicitly state:');
   sections.push('');
-  sections.push('**動作**:');
-  sections.push('- 互換性がある場合: 自動的に通常モードで動作');
-  sections.push('- 互換性がない場合: 機能制限モードで動作（読み取り専用）');
-  sections.push('- マイグレーション提案を確認後、承認を得て実行');
+  sections.push('**Cautions**:');
+  sections.push('- Explicitly state changes when executing update/delete/insert');
+  sections.push('- Warn that "this instruction file will be modified"');
+  sections.push('- Conflict detection (`detect-conflicts`) activates automatically if external changes exist');
+  sections.push('');
+  
+  // Consistency Check with Existing Rules
+  sections.push('### Consistency Check with Existing Rules');
+  sections.push('');
+  sections.push('When receiving new instructions, always check for contradictions with existing `project_context`.');
+  sections.push('');
+  sections.push('**Check Procedure**:');
+  sections.push('1. Search related categories (`project_context read`)');
+  sections.push('2. If contradictions detected, present options to user');
+  sections.push('3. Follow user choice to update or maintain existing rules');
+  sections.push('');
+  
+  // Onboarding for Existing Projects
+  sections.push('### Onboarding for Existing Projects');
+  sections.push('');
+  sections.push('On first run, or if existing `copilot-instructions.md` exists, analyze with `onboarding` tool.');
+  sections.push('');
+  sections.push('**Behavior**:');
+  sections.push('- If compatible: Automatically operates in normal mode');
+  sections.push('- If incompatible: Operates in restricted mode (read-only)');
+  sections.push('- After reviewing migration proposal, execute with approval');
   
   return sections.join('\n');
 }
 
 /**
- * 開発状態に応じた追加メッセージを生成
+ * Generate additional messages based on development state
  * 
- * @param context 開発状態
- * @returns 追加メッセージ（空の場合もある）
+ * @param context Development state
+ * @returns Additional messages (may be empty)
  */
 export function generateContextSpecificGuidance(context: DevelopmentContext): string {
   const messages: string[] = [];
   
-  // phase別の追加ガイダンス
+  // Phase-specific additional guidance
   switch (context.phase) {
     case 'development':
       messages.push('');
       messages.push('---');
       messages.push('');
-      messages.push('**現在: 開発フェーズ**');
-      messages.push('- 新しい規約は `project_context` に即座に登録');
-      messages.push('- コーディング規約の参照を優先');
+      messages.push('**Current: Development Phase**');
+      messages.push('- Register new conventions to `project_context` immediately');
+      messages.push('- Prioritize referencing coding conventions');
       break;
     case 'testing':
       messages.push('');
       messages.push('---');
       messages.push('');
-      messages.push('**現在: テストフェーズ**');
-      messages.push('- テスト規約の参照を優先');
-      messages.push('- カバレッジ目標を確認');
+      messages.push('**Current: Testing Phase**');
+      messages.push('- Prioritize referencing test conventions');
+      messages.push('- Check coverage goals');
       break;
     case 'debugging':
       messages.push('');
       messages.push('---');
       messages.push('');
-      messages.push('**現在: デバッグフェーズ**');
-      messages.push('- 既存 `project_context` の確認を優先');
-      messages.push('- 問題の根本原因を記録');
+      messages.push('**Current: Debugging Phase**');
+      messages.push('- Prioritize checking existing `project_context`');
+      messages.push('- Record root cause of issues');
       break;
     case 'refactoring':
       messages.push('');
       messages.push('---');
       messages.push('');
-      messages.push('**現在: リファクタリングフェーズ**');
-      messages.push('- コード品質規約の参照を優先');
-      messages.push('- 変更履歴を `change_context` で記録');
+      messages.push('**Current: Refactoring Phase**');
+      messages.push('- Prioritize referencing code quality conventions');
+      messages.push('- Record change history with `change_context`');
       break;
     case 'documentation':
       messages.push('');
       messages.push('---');
       messages.push('');
-      messages.push('**現在: ドキュメント作成フェーズ**');
-      messages.push('- ドキュメント規約の参照を優先');
-      messages.push('- 重要な説明は `project_context` に登録');
+      messages.push('**Current: Documentation Phase**');
+      messages.push('- Prioritize referencing documentation conventions');
+      messages.push('- Register important descriptions to `project_context`');
       break;
   }
   
-  // focus配列に応じた追加ガイダンス
+  // Focus-specific additional guidance
   if (context.focus && context.focus.length > 0) {
     const focusGuidance: string[] = [];
     
@@ -145,25 +145,25 @@ export function generateContextSpecificGuidance(context: DevelopmentContext): st
       const lowerItem = item.toLowerCase();
       
       if (lowerItem.includes('api')) {
-        focusGuidance.push('- **API関連**: `project_context` でAPI規約を確認');
+        focusGuidance.push('- **API-related**: Check API conventions in `project_context`');
       }
       if (lowerItem.includes('認証') || lowerItem.includes('auth')) {
-        focusGuidance.push('- **認証関連**: セキュリティ規約を最優先');
+        focusGuidance.push('- **Authentication-related**: Prioritize security conventions');
       }
       if (lowerItem.includes('データベース') || lowerItem.includes('db')) {
-        focusGuidance.push('- **データベース関連**: スキーマ設計規約を確認');
+        focusGuidance.push('- **Database-related**: Check schema design conventions');
       }
       if (lowerItem.includes('テスト') || lowerItem.includes('test')) {
-        focusGuidance.push('- **テスト関連**: テストパターンとカバレッジ基準を確認');
+        focusGuidance.push('- **Testing-related**: Check test patterns and coverage criteria');
       }
       if (lowerItem.includes('パフォーマンス') || lowerItem.includes('performance')) {
-        focusGuidance.push('- **パフォーマンス関連**: 最適化ガイドラインを参照');
+        focusGuidance.push('- **Performance-related**: Reference optimization guidelines');
       }
     }
     
     if (focusGuidance.length > 0) {
       messages.push('');
-      messages.push('**現在のフォーカス**:');
+      messages.push('**Current Focus**:');
       messages.push(...focusGuidance);
     }
   }
@@ -172,10 +172,10 @@ export function generateContextSpecificGuidance(context: DevelopmentContext): st
 }
 
 /**
- * 完全なメタ指示セクションを生成（基本 + 状態固有）
+ * Generate complete meta-instruction section (base + state-specific)
  * 
- * @param context 開発状態
- * @returns 完全なメタ指示のMarkdown文字列
+ * @param context Development state
+ * @returns Complete meta-instruction Markdown string
  */
 export function generateFullMetaInstruction(context: DevelopmentContext): string {
   const baseInstruction = generateMetaInstruction(context);
