@@ -301,26 +301,38 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 - 次回read時にCopilotが自動検知
 - Copilot主体で解決、必要時のみ人間に確認
 
+### ✅ PBI-003 (High): 複数Copilotセッション間の排他制御
+- **AC**: ロックファイルによる排他制御、タイムアウト処理、デッドロック検知
+- **完了日**: 2025年12月1日
+- **関連**: Scenario 12
+- **実装内容**:
+  - `lockManager.ts` 作成（acquireLock/releaseLock/withLock/getLockStatus）
+  - `.copilot-state/.lock` でセッション間排他制御
+  - タイムアウト: 5秒、古いロック自動削除: 10秒
+  - `instructions_structure` の update/resolve-conflict に統合
+  - withLock パターンで確実に解放
+  - テスト6シナリオすべて成功
+  - ユーザーフレンドリーなエラーメッセージ
+
 ---
 
-## 🟠 High Priority (Phase 2)
+## 🎉 Phase 2 完了
 
-### PBI-003: 複数Copilotセッション間の排他制御
+**Phase 2の目標**: 安定性・並行制御・履歴管理
 
-**カテゴリ**: Concurrency Control  
-**優先度**: 🟠 High  
-**登録日**: 2025年12月1日  
-**エピック**: E4
+**完了項目**:
+1. ✅ PBI-001: 外部変更検知と競合解決（Step 1, 1.5, 2）
+2. ✅ PBI-002: 変更履歴管理とロールバック
+3. ✅ 動的指示書生成エンジン
+4. ✅ PBI-004: feedbackツール + ソフト・ハードリミット
+5. ✅ PBI-003: 複数Copilotセッション間の排他制御
 
-#### 概要
-
-複数のCopilotセッションが同時に指示書を更新する際の排他制御。
-
-#### 要件
-
-- ロックファイル（`.copilot-context/.lock`）による排他制御
-- タイムアウト処理（5秒）
-- デッドロック検知
+**達成内容**:
+- ✅ 安定性: 外部変更検知、競合マーカー方式、Git統合
+- ✅ 並行制御: ロックファイルによる排他制御、デッドロック防止
+- ✅ 履歴管理: 自動スナップショット、ロールバック、差分表示、古い履歴削除
+- ✅ 動的生成: phase/focus/priority による適応的指示抽出
+- ✅ 優先度管理: ソフト・ハードリミットでアテンション分散防止
 
 ---
 
@@ -345,22 +357,54 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
 ---
 
-### PBI-006: instructions_structure のセクション削除・挿入機能
+### PBI-006: instructions_structure のセクション削除・挿入機能 ✅
 
 **カテゴリ**: Feature / CRUD  
-**優先度**: 🟡 Medium  
+**優先度**: 🟡 Medium → ✅ 完了  
 **登録日**: 2025年12月1日  
+**完了日**: 2025年12月1日  
 **エピック**: E2  
-**関連ストーリー**: S4
+**関連ストーリー**: S4  
+**参照**: [Scenario 13](../implementation-scenarios.md#scenario-13-instructions_structure-crud完成deleteinse実装---pbi-006)
 
 #### 概要
 
-現在read/updateのみのため、delete/insertアクションを追加。
+instructions_structureツールにCRUD操作の残り2つ（Create/Delete）を追加し、完全な指示書管理機能を実現。
 
-#### 要件
+#### 実装内容
 
-- `action: 'delete'`でセクション削除
-- `action: 'insert'`で位置指定挿入（before/after/first-child/last-child）
+**markdownAst.ts**:
+- ✅ `deleteSection(heading)`: セクション削除（~35行）
+- ✅ `insertSection(heading, content, position, anchor?)`: セクション挿入（~105行）
+  - 4つの位置: first（先頭）、last（末尾）、before（アンカー前）、after（アンカー後）
+
+**instructions_structure.ts**:
+- ✅ deleteアクション実装（withLock統合）
+- ✅ insertアクション実装（withLock統合）
+- ✅ 日本語メッセージ（先頭に/最後に/「X」の前に/後に）
+
+**index.ts**:
+- ✅ MCPスキーマ更新（delete/insert追加）
+- ✅ position/anchorプロパティ追加
+
+**テスト**:
+- ✅ test-delete-insert.ts（10シナリオすべて成功）
+- ✅ 正常系: 先頭/末尾/before/after挿入、削除、連続操作
+- ✅ 異常系: 存在しないセクション、重複、存在しないアンカー
+
+#### 成果
+
+- **CRUD完成**: Create(insert) / Read / Update / Delete すべて実装
+- **柔軟性**: 4つの挿入位置で論理的な構成管理
+- **安全性**: 重複防止、存在確認、排他制御統合
+- **品質**: 10/10テスト成功、エラーハンドリング完備
+
+#### 技術的価値
+
+- テキストベース処理でシンプルかつ効率的
+- withLockパターンで並行処理の安全性確保
+- 動的な指示書構成変更が可能に
+- Phase 3の第一歩として基盤完成
 
 ---
 
@@ -453,26 +497,40 @@ MCPツール群の統合テスト、GitHub Actions設定。
 - ✅ 実プロジェクト活用とUX改善 (Scenario 5)
 - ✅ 用語定義の明確化
 
-### Phase 2 (進行中) 🎯
+### Phase 2 (完了) ✅
+**期間**: 2025年12月1日  
 **目標**: 安定性・並行制御・履歴管理
 
 **完了項目**:
-1. ✅ PBI-001: 外部変更検知（Step 1, 1.5, 2完了）
-2. ✅ PBI-002: 変更履歴管理（完了）
-3. ✅ 動的指示書生成エンジン（完了）
+1. ✅ PBI-001: 外部変更検知と競合解決（Step 1, 1.5, 2完了）
+2. ✅ PBI-002: 変更履歴管理とロールバック
+3. ✅ 動的指示書生成エンジン
+4. ✅ PBI-004: feedbackツール + ソフト・ハードリミット
+5. ✅ PBI-003: 複数Copilotセッション間の排他制御
 
-**残り項目**:
-1. 🟠 PBI-003: 排他制御
+**達成内容**:
+- ✅ 安定性: 外部変更検知、競合マーカー方式、Git統合
+- ✅ 並行制御: ロックファイルによる排他制御、デッドロック防止
+- ✅ 履歴管理: 自動スナップショット、ロールバック、差分表示
+- ✅ 動的生成: phase/focus/priority による適応的指示抽出
+- ✅ 優先度管理: ソフト・ハードリミットでアテンション分散防止
 
-### Phase 3 (将来) 📋
-**目標**: UX改善、CRUD完成、適応的機能
+### Phase 3 (進行中) 🎯
+**期間**: 2025年12月1日〜  
+**目標**: UX改善、CRUD完成、運用機能強化
 
-**対象項目**:
-- 🟡 PBI-004: feedbackツール設計
-- 🟡 PBI-005: サマリーカスタマイズ
-- 🟡 PBI-006: instructions_structure delete/insert
-- 🟡 S6: adaptive_instructions
-- 🟡 S8: 指示書最適化
+**完了項目**:
+1. ✅ **PBI-006**: instructions_structure delete/insert（CRUD完成）
+   - Scenario 13で完了
+   - deleteSection/insertSection実装
+   - 4つの挿入位置（first/last/before/after）
+   - 10/10テスト成功
+
+**残りの推奨実装**:
+2. 🟡 **PBI-005**: サマリーカスタマイズ（UX改善）
+3. 🟡 **feedback拡張**: suggest-merge機能（Phase 2の延長）
+4. 🟡 **S8**: 指示書最適化ルール適用
+5. 🟡 **S6**: adaptive_instructions（高度な機能）
 
 ### Phase 4 (拡張) 🚀
 **目標**: エクスポート、テスト強化、CI/CD

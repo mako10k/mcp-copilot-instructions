@@ -1943,6 +1943,404 @@ Node.jsはシングルスレッドのため、同一プロセス内では Promis
 
 ---
 
+## Scenario 13: instructions_structure CRUD完成（delete/insert実装） - PBI-006
+
+**日時**: 2025-12-01  
+**対応PBI**: PBI-006  
+**Phase**: Phase 3
+
+### 背景
+
+Phase 2完了時点で、`instructions_structure`ツールは**Read**と**Update**のみをサポートしていました。
+指示書の完全な管理には**Create（挿入）**と**Delete（削除）**が必要です。
+
+**実装前の状況**:
+- ✅ read: セクション構造の取得
+- ✅ update: 既存セクションの更新
+- ❌ delete: セクションの削除（未実装）
+- ❌ insert: 新規セクションの挿入（未実装）
+- ✅ detect-conflicts: 競合検出
+- ✅ resolve-conflict: 競合解決
+
+### 実装内容
+
+#### 1. markdownAst.ts への2つの新関数追加
+
+**deleteSection関数** (~35行):
+```typescript
+export async function deleteSection(
+  heading: string
+): Promise<{ success: boolean; error?: string }> {
+  const content = await readInstructionsFile();
+  
+  // セクションの見出しを検索
+  const headingPattern = new RegExp(`^## ${heading}$`, 'm');
+  const headingMatch = content.match(headingPattern);
+  
+  if (!headingMatch) {
+    return { success: false, error: `セクション「${heading}」が見つかりません` };
+  }
+
+  // セクション範囲を特定（見出しから次の見出しまで、または末尾まで）
+  const sectionStart = headingMatch.index;
+  const remainingContent = content.substring(sectionStart);
+  const nextHeadingMatch = remainingContent.match(/\n## /);
+  const sectionEnd = nextHeadingMatch 
+    ? sectionStart + nextHeadingMatch.index 
+    : content.length;
+
+  // セクションを削除
+  const newContent = 
+    content.substring(0, sectionStart) +
+    content.substring(sectionEnd);
+
+  await writeInstructionsFile(newContent);
+  return { success: true };
+}
+```
+
+**insertSection関数** (~105行):
+```typescript
+export async function insertSection(
+  heading: string,
+  content: string,
+  position: 'before' | 'after' | 'first' | 'last',
+  anchor?: string
+): Promise<{ success: boolean; error?: string }> {
+  const currentContent = await readInstructionsFile();
+
+  // 重複チェック
+  const existingPattern = new RegExp(`^## ${heading}$`, 'm');
+  if (existingPattern.test(currentContent)) {
+    return { success: false, error: `セクション「${heading}」は既に存在します` };
+  }
+
+  const newSection = `## ${heading}\n\n${content.trim()}\n\n`;
+  let insertIndex: number;
+
+  switch (position) {
+    case 'first': {
+      // タイトル行（# Copilot Instructions）の後に挿入
+      const titleMatch = currentContent.match(/^#[^#].*$/m);
+      insertIndex = titleMatch 
+        ? titleMatch.index + titleMatch[0].length + 1
+        : 0;
+      break;
+    }
+
+    case 'last': {
+      // ファイルの最後に挿入
+      insertIndex = currentContent.length;
+      break;
+    }
+
+    case 'before':
+    case 'after': {
+      if (!anchor) {
+        return { success: false, error: `position='${position}'の場合はanchorが必須です` };
+      }
+
+      // アンカーセクションを検索
+      const anchorPattern = new RegExp(`^## ${anchor}$`, 'm');
+      const anchorMatch = currentContent.match(anchorPattern);
+      
+      if (!anchorMatch) {
+        return { success: false, error: `アンカーセクション「${anchor}」が見つかりません` };
+      }
+
+      if (position === 'before') {
+        insertIndex = anchorMatch.index;
+      } else {
+        // afterの場合、アンカーセクションの終わりを探す
+        const sectionStart = anchorMatch.index;
+        const remainingContent = currentContent.substring(sectionStart);
+        const nextHeadingMatch = remainingContent.match(/\n## /);
+        
+        insertIndex = nextHeadingMatch 
+          ? sectionStart + nextHeadingMatch.index + 1
+          : currentContent.length;
+      }
+      break;
+    }
+  }
+
+  const newContent = 
+    currentContent.substring(0, insertIndex) +
+    newSection +
+    currentContent.substring(insertIndex);
+
+  await writeInstructionsFile(newContent);
+  return { success: true };
+}
+```
+
+**設計判断**:
+- **テキストベース処理**: AST解析ではなく正規表現でシンプルに実装
+- **セクション境界**: `## `で始まる行を境界として認識
+- **4つの挿入位置**: 柔軟性を確保
+  - `first`: ファイル先頭（高優先度セクション向け）
+  - `last`: ファイル末尾（新規追加の標準）
+  - `before`: アンカーの前（論理的グループ化）
+  - `after`: アンカーの後（関連コンテンツ配置）
+
+#### 2. instructions_structure.ts への統合
+
+**新しいアクション定義**:
+```typescript
+interface DeleteStructureArgs {
+  action: 'delete';
+  heading: string;
+}
+
+interface InsertStructureArgs {
+  action: 'insert';
+  heading: string;
+  content: string;
+  position: 'before' | 'after' | 'first' | 'last';
+  anchor?: string;
+}
+```
+
+**deleteアクション実装**:
+```typescript
+case 'delete': {
+  try {
+    const result = await withLock(async () => {
+      return await deleteSection(args.heading);
+    });
+
+    if (!result.success) {
+      return `エラー: ${result.error}`;
+    }
+
+    return `✓ セクション「${args.heading}」を削除しました。`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('Timeout')) {
+      return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+    }
+    return `エラー: ${message}`;
+  }
+}
+```
+
+**insertアクション実装**:
+```typescript
+case 'insert': {
+  try {
+    const result = await withLock(async () => {
+      return await insertSection(
+        args.heading,
+        args.content,
+        args.position,
+        args.anchor
+      );
+    });
+
+    if (!result.success) {
+      return `エラー: ${result.error}`;
+    }
+
+    // 挿入位置のメッセージ構築
+    let positionMsg = '';
+    switch (args.position) {
+      case 'first': positionMsg = '先頭に'; break;
+      case 'last': positionMsg = '最後に'; break;
+      case 'before': positionMsg = `「${args.anchor}」の前に`; break;
+      case 'after': positionMsg = `「${args.anchor}」の後に`; break;
+    }
+
+    return `✓ セクション「${args.heading}」を${positionMsg}挿入しました。`;
+  } catch (error) {
+    // エラー処理（deleteと同様）
+  }
+}
+```
+
+**排他制御の統合**:
+- `withLock`パターンで自動的にロック取得・解放
+- タイムアウト時は分かりやすいメッセージ
+- 他のアクション（update/resolve-conflict）と一貫性
+
+#### 3. MCP スキーマ更新
+
+**index.ts での登録**:
+```typescript
+{
+  name: 'instructions_structure',
+  description: '指示書Markdown ASTの完全なCRUD操作と競合管理。',
+  inputSchema: {
+    properties: {
+      action: {
+        enum: ['read', 'update', 'delete', 'insert', 'detect-conflicts', 'resolve-conflict'],
+        description: '... delete(セクション削除) / insert(セクション挿入) ...'
+      },
+      heading: {
+        description: 'セクション見出し（update/delete/insert/resolve-conflictの場合必須）'
+      },
+      content: {
+        description: 'セクション内容（update/insertの場合必須）'
+      },
+      position: {
+        enum: ['before', 'after', 'first', 'last'],
+        description: '挿入位置（insertの場合必須）: before(アンカーの前) / after(アンカーの後) / first(先頭) / last(最後)'
+      },
+      anchor: {
+        description: '基準となるセクションの見出し（position=before/afterの場合必須）'
+      },
+      // ... 既存のプロパティ ...
+    }
+  }
+}
+```
+
+### テスト結果
+
+**test-delete-insert.ts** - 10シナリオ:
+
+```
+🧪 instructions_structure delete/insert 統合テスト
+
+--- Scenario 3: 先頭への挿入 ---
+✅ 先頭挿入
+
+--- Scenario 4: 末尾への挿入 ---
+✅ 末尾挿入
+
+--- Scenario 5: アンカーの前に挿入 ---
+✅ アンカーの前に挿入
+
+--- Scenario 6: アンカーの後に挿入 ---
+✅ アンカーの後に挿入
+
+--- Scenario 1: 既存セクションの削除 ---
+✅ 既存セクション削除
+
+--- Scenario 2: 存在しないセクションの削除 ---
+✅ 存在しないセクション削除（エラーメッセージ検証）
+
+--- Scenario 7: 存在しないアンカーへの挿入 ---
+✅ 存在しないアンカー（エラーメッセージ検証）
+
+--- Scenario 8: 重複セクションの挿入 ---
+✅ 重複挿入の防止（エラーメッセージ検証）
+
+--- Scenario 9: 連続操作（挿入→削除） ---
+✅ 挿入フェーズ
+✅ 削除フェーズ
+
+--- Scenario 10: 挿入内容の検証 ---
+✅ 複数行コンテンツ
+   内容が正しく挿入されました
+
+==================================================
+✅ 全テスト完了
+```
+
+**テストの特徴**:
+- ファイルのバックアップ・復元機能
+- 正常系と異常系の両方をカバー
+- エラーメッセージの検証
+- 複数行コンテンツの正確性検証
+
+### 効果
+
+#### 1. CRUD操作の完成
+
+| 操作 | アクション | 説明 | 状態 |
+|------|-----------|------|------|
+| **Create** | insert | 新規セクション挿入 | ✅ 実装済 |
+| **Read** | read | 構造取得 | ✅ 既存 |
+| **Update** | update | セクション更新 | ✅ 既存 |
+| **Delete** | delete | セクション削除 | ✅ 実装済 |
+
+#### 2. 柔軟な挿入位置
+
+```typescript
+// 使用例
+instructions_structure({
+  action: 'insert',
+  heading: '新セクション',
+  content: '内容...',
+  position: 'first'  // or 'last', 'before', 'after'
+  anchor: '既存セクション'  // before/afterの場合
+})
+```
+
+#### 3. 安全性の確保
+
+- **重複防止**: 同じ見出しのセクションは作成不可
+- **存在確認**: 削除前に存在チェック
+- **アンカー検証**: before/after時にアンカーの存在確認
+- **排他制御**: withLockによる並行処理の安全性
+
+#### 4. Copilotの自律性向上
+
+**できるようになったこと**:
+- 不要なセクションの削除（廃止された規約など）
+- 新しいセクションの追加（新技術の導入時）
+- セクションの論理的配置（関連セクションをグループ化）
+- 動的な指示書構成の変更
+
+### 今後の拡張可能性
+
+1. **セクションの移動**
+   - deleteとinsertの組み合わせで実現可能
+   - 専用の`move`アクションも検討
+
+2. **セクションのコピー**
+   - 既存セクションを読み取り、別の場所に挿入
+   - テンプレート化に有用
+
+3. **バルク操作**
+   - 複数セクションの一括挿入・削除
+   - トランザクション的な処理
+
+4. **セクション順序の最適化**
+   - 重要度や使用頻度に基づく自動並び替え
+   - アクセスパターン分析との連携
+
+### PBI-006完了チェックリスト
+
+- [x] `deleteSection`関数実装（markdownAst.ts）
+- [x] `insertSection`関数実装（markdownAst.ts）
+- [x] 4つの挿入位置サポート（first/last/before/after）
+- [x] 重複チェック機能
+- [x] アンカー存在確認
+- [x] instructions_structure.tsへの統合
+  - [x] DeleteStructureArgs/InsertStructureArgs定義
+  - [x] deleteアクション実装
+  - [x] insertアクション実装
+- [x] withLockによる排他制御統合
+- [x] MCPスキーマ更新（index.ts）
+  - [x] action enumに'delete', 'insert'追加
+  - [x] position/anchorプロパティ追加
+- [x] テストスクリプト作成（test-delete-insert.ts）
+- [x] 10シナリオすべて成功
+- [x] ドキュメント更新（Scenario 13）
+
+### 成果まとめ
+
+**実装規模**:
+- 追加コード: ~200行（markdownAst.ts ~140行、instructions_structure.ts ~60行）
+- テストコード: ~150行
+- 開発時間: 約2時間
+
+**品質指標**:
+- テスト成功率: 10/10 (100%)
+- エラーハンドリング: 5パターン
+- 排他制御: 完全統合
+
+**技術的価値**:
+- ✅ CRUD完成により指示書管理の完全な自動化
+- ✅ 4つの挿入位置で柔軟な構成管理
+- ✅ 排他制御統合で並行処理の安全性確保
+- ✅ テキストベース処理でシンプルかつ効率的
+
+**Phase 3の第一歩**として、指示書管理の基盤が完成しました！
+
+---
+
 ## Phase 2 完了 🎉
 
 PBI-003の完了により、**Phase 2のすべての項目が完了**しました。
@@ -1960,3 +2358,16 @@ PBI-003の完了により、**Phase 2のすべての項目が完了**しまし�
 - ✅ 履歴管理: 自動スナップショット、ロールバック
 
 次は **Phase 3** へ！
+
+---
+
+## Phase 3 進行中 🚀
+
+**Phase 3完了項目**:
+1. ✅ **PBI-006: instructions_structure CRUD完成（delete/insert実装）**
+
+**残りのPhase 3項目**:
+- PBI-005: サマリー表示のカスタマイズ
+- feedback拡張: suggest-merge機能
+- S8: 指示最適化ルール
+- S6: adaptive_instructions

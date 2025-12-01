@@ -3,6 +3,8 @@ import {
   updateSection,
   detectConflictMarkers,
   resolveConflict,
+  deleteSection,
+  insertSection,
 } from '../utils/markdownAst';
 import { readInstructionsFileWithState } from '../utils/fileSystem';
 import { withLock } from '../utils/lockManager';
@@ -29,11 +31,26 @@ interface ResolveConflictArgs {
   manualContent?: string;
 }
 
+interface DeleteStructureArgs {
+  action: 'delete';
+  heading: string;
+}
+
+interface InsertStructureArgs {
+  action: 'insert';
+  heading: string;
+  content: string;
+  position: 'before' | 'after' | 'first' | 'last';
+  anchor?: string;
+}
+
 type InstructionsStructureArgs =
   | ReadStructureArgs
   | UpdateStructureArgs
   | DetectConflictsArgs
-  | ResolveConflictArgs;
+  | ResolveConflictArgs
+  | DeleteStructureArgs
+  | InsertStructureArgs;
 
 export async function instructionsStructure(args: InstructionsStructureArgs) {
   switch (args.action) {
@@ -151,6 +168,66 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         return `✓ セクション「${args.heading}」の競合を解決しました（${resolutionMsg}）。`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        return `エラー: ${message}`;
+      }
+    }
+
+    case 'delete': {
+      try {
+        // 排他制御を使用してセクション削除
+        const result = await withLock(async () => {
+          return await deleteSection(args.heading);
+        });
+
+        if (!result.success) {
+          return `エラー: ${result.error}`;
+        }
+
+        return `✓ セクション「${args.heading}」を削除しました。`;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        
+        if (message.includes('Failed to acquire lock')) {
+          return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+        }
+        
+        return `エラー: ${message}`;
+      }
+    }
+
+    case 'insert': {
+      try {
+        // 排他制御を使用してセクション挿入
+        const result = await withLock(async () => {
+          return await insertSection(
+            args.heading,
+            args.content,
+            args.position,
+            args.anchor
+          );
+        });
+
+        if (!result.success) {
+          return `エラー: ${result.error}`;
+        }
+
+        const positionMsg =
+          args.position === 'first'
+            ? '先頭に'
+            : args.position === 'last'
+            ? '最後に'
+            : args.position === 'before'
+            ? `「${args.anchor}」の前に`
+            : `「${args.anchor}」の後に`;
+
+        return `✓ セクション「${args.heading}」を${positionMsg}挿入しました。`;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        
+        if (message.includes('Failed to acquire lock')) {
+          return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+        }
+        
         return `エラー: ${message}`;
       }
     }

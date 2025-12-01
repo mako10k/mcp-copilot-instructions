@@ -166,18 +166,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'instructions_structure',
         description:
-          '指示書Markdown ASTのCRUD操作と競合管理。' +
-          'update時は自動マージまたは競合マーカー挿入。' +
-          'detect-conflictsで競合検出、resolve-conflictで解決。',
+          '指示書Markdown ASTの完全なCRUD操作と競合管理。' +
+          'read(構造取得) / update(セクション更新) / delete(セクション削除) / insert(セクション挿入) / ' +
+          'detect-conflicts(競合検出) / resolve-conflict(競合解決)。',
         inputSchema: {
           type: 'object',
           properties: {
             action: {
               type: 'string',
-              enum: ['read', 'update', 'detect-conflicts', 'resolve-conflict'],
+              enum: ['read', 'update', 'delete', 'insert', 'detect-conflicts', 'resolve-conflict'],
               description:
-                'アクション: read(構造取得) / update(セクション更新) / ' +
-                'detect-conflicts(競合検出) / resolve-conflict(競合解決)',
+                'アクション: read(構造取得) / update(セクション更新) / delete(セクション削除) / ' +
+                'insert(セクション挿入) / detect-conflicts(競合検出) / resolve-conflict(競合解決)',
             },
             includeGitInfo: {
               type: 'boolean',
@@ -185,11 +185,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             heading: {
               type: 'string',
-              description: 'セクション見出し（update/resolve-conflictの場合必須）',
+              description: 'セクション見出し（update/delete/insert/resolve-conflictの場合必須）',
             },
             content: {
               type: 'string',
-              description: 'セクション内容（updateの場合必須）',
+              description: 'セクション内容（update/insertの場合必須）',
+            },
+            position: {
+              type: 'string',
+              enum: ['before', 'after', 'first', 'last'],
+              description:
+                '挿入位置（insertの場合必須）: ' +
+                'before(アンカーの前) / after(アンカーの後) / first(先頭) / last(最後)',
+            },
+            anchor: {
+              type: 'string',
+              description: '基準となるセクションの見出し（position=before/afterの場合必須）',
             },
             resolution: {
               type: 'string',

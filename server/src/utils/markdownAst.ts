@@ -452,3 +452,133 @@ export async function resolveConflict(
   return { success: true };
 }
 
+/**
+ * セクションを削除
+ * @param heading 削除するセクションの見出し
+ * @returns 成功時はsuccess: true、失敗時はエラーメッセージ
+ */
+export async function deleteSection(heading: string): Promise<{ success: boolean; error?: string }> {
+  const content = await readInstructionsFile();
+  if (!content) {
+    return { success: false, error: '指示書ファイルが存在しません' };
+  }
+
+  // セクションの見出しを検索
+  const headingPattern = new RegExp(`^## ${heading}$`, 'm');
+  const headingMatch = content.match(headingPattern);
+  
+  if (!headingMatch || headingMatch.index === undefined) {
+    return { success: false, error: `セクション「${heading}」が見つかりません` };
+  }
+
+  const sectionStart = headingMatch.index;
+  
+  // 次のセクション（##で始まる行）を探す
+  const remainingContent = content.substring(sectionStart);
+  const nextHeadingMatch = remainingContent.match(/\n## /);
+  const sectionEnd = nextHeadingMatch && nextHeadingMatch.index !== undefined
+    ? sectionStart + nextHeadingMatch.index 
+    : content.length;
+
+  // セクションを削除
+  const newContent = 
+    content.substring(0, sectionStart) +
+    content.substring(sectionEnd);
+
+  await writeInstructionsFile(newContent);
+
+  return { success: true };
+}
+
+/**
+ * セクションを挿入
+ * @param heading 新しいセクションの見出し
+ * @param content セクションの内容
+ * @param position 挿入位置（'before' | 'after' | 'first' | 'last'）
+ * @param anchor 基準となるセクションの見出し（before/afterの場合に必須）
+ * @returns 成功時はsuccess: true、失敗時はエラーメッセージ
+ */
+export async function insertSection(
+  heading: string,
+  content: string,
+  position: 'before' | 'after' | 'first' | 'last',
+  anchor?: string
+): Promise<{ success: boolean; error?: string }> {
+  const currentContent = await readInstructionsFile();
+  if (!currentContent) {
+    return { success: false, error: '指示書ファイルが存在しません' };
+  }
+
+  // 既に同じ見出しのセクションが存在するかチェック
+  const existingPattern = new RegExp(`^## ${heading}$`, 'm');
+  if (existingPattern.test(currentContent)) {
+    return { success: false, error: `セクション「${heading}」は既に存在します` };
+  }
+
+  // 新しいセクションのテキスト
+  const newSection = `## ${heading}\n\n${content.trim()}\n\n`;
+
+  let insertIndex: number;
+
+  switch (position) {
+    case 'first': {
+      // ファイルの先頭に挿入（タイトルの後）
+      // "# Copilot Instructions" などのタイトル行の後を探す
+      const titleMatch = currentContent.match(/^#[^#].*$/m);
+      insertIndex = titleMatch && titleMatch.index !== undefined
+        ? titleMatch.index + titleMatch[0].length + 1
+        : 0;
+      break;
+    }
+
+    case 'last': {
+      // ファイルの最後に挿入
+      insertIndex = currentContent.length;
+      break;
+    }
+
+    case 'before':
+    case 'after': {
+      if (!anchor) {
+        return { success: false, error: `position='${position}'の場合はanchorが必須です` };
+      }
+
+      // アンカーセクションを検索
+      const anchorPattern = new RegExp(`^## ${anchor}$`, 'm');
+      const anchorMatch = currentContent.match(anchorPattern);
+      
+      if (!anchorMatch || anchorMatch.index === undefined) {
+        return { success: false, error: `アンカーセクション「${anchor}」が見つかりません` };
+      }
+
+      if (position === 'before') {
+        // アンカーの直前に挿入
+        insertIndex = anchorMatch.index;
+      } else {
+        // アンカーの直後に挿入（アンカーセクションの終わりを探す）
+        const sectionStart = anchorMatch.index;
+        const remainingContent = currentContent.substring(sectionStart);
+        const nextHeadingMatch = remainingContent.match(/\n## /);
+        
+        insertIndex = nextHeadingMatch && nextHeadingMatch.index !== undefined
+          ? sectionStart + nextHeadingMatch.index + 1
+          : currentContent.length;
+      }
+      break;
+    }
+
+    default:
+      return { success: false, error: `無効なposition: ${position}` };
+  }
+
+  // セクションを挿入
+  const newContent = 
+    currentContent.substring(0, insertIndex) +
+    newSection +
+    currentContent.substring(insertIndex);
+
+  await writeInstructionsFile(newContent);
+
+  return { success: true };
+}
+
