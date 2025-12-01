@@ -6,6 +6,9 @@
 			"args": [
 				"server/dist/index.js"
 			],
+			"dev": {
+				"watch": "server/dist/*.js",
+			},
 			"env": {
 				"NODE_ENV": "production"
 			}

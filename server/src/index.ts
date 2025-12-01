@@ -4,13 +4,13 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { guidance } from './tools/guidance';
-import { projectContext } from './tools/project_context';
-import { instructionsStructure } from './tools/instructions_structure';
-import { changeContext } from './tools/change_context';
-import { feedback } from './tools/feedback';
-import { onboarding } from './tools/onboarding';
-import { handleGoalManagement } from './tools/goal_management';
+import { guidance } from './tools/guidance.js';
+import { projectContext } from './tools/project_context.js';
+import { instructionsStructure } from './tools/instructions_structure.js';
+import { changeContext } from './tools/change_context.js';
+import { feedback } from './tools/feedback.js';
+import { onboarding } from './tools/onboarding.js';
+import { handleGoalManagement } from './tools/goal_management.js';
 
 const server = new Server(
   {
