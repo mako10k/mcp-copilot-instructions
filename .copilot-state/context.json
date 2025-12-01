@@ -1,8 +1,9 @@
 {
-  "phase": "development",
+  "phase": "testing",
   "focus": [
-    "API認証",
-    "JWT"
+    "優先フラグ",
+    "リミット機能",
+    "feedback"
   ],
   "priority": "high",
   "mode": "normal"
