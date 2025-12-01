@@ -18,7 +18,7 @@ export async function testFeedback(): Promise<void> {
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         logger.info(
-          'Skipping feedback test: .copilot-instructions directory not found'
+          'Skipping feedback test: .copilot-instructions directory not found',
         );
         logger.success('Test skipped (no test data available)');
         logger.end();
