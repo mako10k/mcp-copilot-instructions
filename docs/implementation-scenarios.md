@@ -710,8 +710,117 @@ Copilot (LLM)に対して明確なエラーメッセージを返し、再試行�
 - [x] 4つのテストシナリオすべてパス
 - [x] 後方互換性の維持（updateSectionLegacy）
 
-### 次のステップ（PBI-001 Step 2以降）
+### 発見された課題: 手詰まり問題
+
+**問題**:
+現在の実装では、競合検知後に更新が不可能になる:
+```
+1. Copilot: 指示書を読み込み (hash: ABC)
+2. 人間開発者: 指示書を直接編集 (hash: DEF)
+3. Copilot: updateSection実行 → 競合エラー ⚠️
+4. Copilot: 再試行 → updateSection内部で最新を読むが、
+            同じセクションが変更されているため再び競合
+5. 🔴 永久に更新できない（人間が手動でマージするしかない）
+```
+
+**根本原因**:
+- 競合時にエラーを返すだけで、解決手段がない
+- 「上書き」は危険で禁止すべき
+- 「マージ」の仕組みが必要
+
+### 次のステップ（PBI-001 Step 1.5: 競合マーカー方式）
+
+**設計方針の改訂**:
+1. ❌ 強制上書き（force）は禁止 → データロス防止
+2. ✅ セクション単位の自動マージ → 異なるセクションなら競合しない
+3. ✅ 競合マーカー方式 → Git風の併記で情報保持
+4. ✅ Copilot主体の解決 → LLMの理解力を活用
+
+**実装内容**:
+
+#### 1. セクション単位のハッシュ比較
+```typescript
+// 他セクション変更 → 自動マージ
+Copilot: 「実装状況」更新
+人間:    「用語の定義」更新
+→ 競合なし、両方の変更を統合 ✓
+
+// 同一セクション変更 → 競合マーカー
+Copilot: 「実装状況」更新
+人間:    「実装状況」更新  
+→ 競合マーカー挿入
+```
+
+#### 2. 競合マーカーの挿入
+```markdown
+## 実装状況
+
+<<<<<<< HEAD (外部変更: 2025-12-01T10:30:00Z)
+- ✅ Scenario 1-5完了
+- 🔄 Scenario 6進行中
+=======
+- ✅ Scenario 1-6完了  
+- ✅ 外部変更検知機能実装済み
+>>>>>>> MCP Update (Copilot)
+```
+
+#### 3. 新規アクション: detect-conflicts
+```typescript
+case 'detect-conflicts': {
+  // 指示書内の競合マーカーを検出
+  const conflicts = await detectConflictMarkers();
+  return conflicts.length === 0
+    ? '競合はありません。'
+    : `${conflicts.length}件の競合:\n` + 
+      conflicts.map(c => `- ${c.heading}`).join('\n');
+}
+```
+
+#### 4. 新規アクション: resolve-conflict
+```typescript
+case 'resolve-conflict': {
+  heading: string;
+  resolution: 'use-head' | 'use-mcp' | 'manual';
+  manualContent?: string;  // resolution='manual'の場合
+  
+  // use-head: 外部変更を採用（HEAD側）
+  // use-mcp: Copilot変更を採用（MCP側）
+  // manual: Copilot自身が統合した内容を渡す
+}
+```
+
+#### 5. Copilotの動作フロー
+```
+1. updateSection実行
+2. 同一セクション競合を検知
+3. 競合マーカー付きで書き込み
+4. 「競合マーカーを追加しました」と通知
+
+（次の会話ターン）
+5. Copilot: action='read' で指示書を確認
+6. 競合マーカーを発見
+7. Copilot: 内容を理解し判断
+   - 両方必要 → 統合版を作成
+   - 片方で十分 → どちらか選択
+   - 判断困難 → 人間開発者に確認を促す
+8. action='resolve-conflict' で解決
+```
+
+### 成功基準（Step 1.5）
+
+- [ ] セクション単位のハッシュ比較実装
+- [ ] 他セクション変更時の自動マージ
+- [ ] 競合マーカー挿入機能
+- [ ] `detect-conflicts`アクション実装
+- [ ] `resolve-conflict`アクション実装（3パターン）
+- [ ] テストシナリオ:
+  - 自動マージ成功ケース
+  - 競合マーカー挿入ケース
+  - Copilot主体の解決ケース
+  - 人間開発者への確認ケース
+
+### その後のステップ
 
 - **Step 2**: Git状態確認機能（.git存在チェック、git status連携）
-- **Step 3**: 競合時の詳細diff表示
-- **Step 4**: 3-way merge UI実装
+- **Step 3**: 競合時の詳細diff表示（3-way view）
+- **Step 4**: 複数Copilotセッション間の排他制御

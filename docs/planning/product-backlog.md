@@ -89,23 +89,43 @@
   - タイムスタンプベースの変更検知
   - ローカルバックアップの自動作成
 
-**3. 競合解決フロー**
+**3. 競合解決フロー(設計改訂版: 競合マーカー方式)**
+
+**基本方針**:
+- ❌ 強制上書き(force)は禁止 → データロスリスクを排除
+- ✅ 競合マーカー付きで併記 → 情報を保持
+- ✅ Copilot主体で解決 → LLMの理解力を活用
+
+**フロー**:
 ```
-1. 書き込み前チェック
+1. updateSection実行
    ↓
-2. 外部変更検知
+2. セクション単位でハッシュ比較
    ↓
-3. 差分表示（3-way merge view推奨）
-   - ベース状態（MCPサーバの記憶）
-   - 現在のファイル（外部変更後）
-   - 適用しようとしている変更
+3a. 他セクションのみ変更 → 自動マージ成功 ✓
+3b. 同一セクション変更 → 競合検知
    ↓
-4. 人間開発者に判断を仰ぐ
-   - オプション1: 外部変更を優先（MCP変更を破棄）
-   - オプション2: MCP変更を優先（外部変更を上書き）
-   - オプション3: マージを試行（conflict markers使用）
-   - オプション4: 操作をキャンセル
+4. Git風の競合マーカーで併記:
+   <<<<<<< HEAD (外部変更: timestamp)
+   外部変更の内容
+   =======
+   Copilotの変更内容
+   >>>>>>> MCP Update (Copilot)
+   ↓
+5. 次回read時、Copilotが競合マーカーを発見
+   ↓
+6. Copilotが内容を理解・判断:
+   - 両方必要 → 統合
+   - 片方で十分 → 選択
+   - 人間に確認必要 → メッセージ
+   ↓
+7. action: 'resolve-conflict' で解決
 ```
+
+**メリット**:
+- データロスゼロ: 両方の変更が保持される
+- Copilot主体: 次回読み込み時に自動的に気づく
+- Git流のメンタルモデル: 開発者に馴染みがある
 
 **4. 実装の提案**
 
@@ -168,14 +188,35 @@ async function writeWithConflictCheck(
 export async function instructionsStructure(args: InstructionsStructureArgs) {
   switch (args.action) {
     case 'update': {
-      const {content, state} = await readWithState(INSTRUCTIONS_FILE);
-      // ... AST操作 ...
-      const result = await writeWithConflictCheck(INSTRUCTIONS_FILE, newContent, state);
+      const result = await updateSectionWithMerge(args.heading, args.content);
       
-      if (!result.success) {
-        return formatConflictMessage(result.conflict);
+      if (result.conflict) {
+        return `⚠️ 競合を検知しました。競合マーカーを追加しました。\n` +
+               `次回読み込み時に内容を確認して解決してください。`;
       }
       return 'セクションを更新しました。';
+    }
+    
+    case 'resolve-conflict': {
+      // 競合解決専用アクション
+      const result = await resolveConflict(
+        args.heading,
+        args.resolution,  // 'use-head' | 'use-mcp' | 'manual'
+        args.manualContent
+      );
+      return result.success 
+        ? '競合を解決しました。' 
+        : `エラー: ${result.error}`;
+    }
+    
+    case 'detect-conflicts': {
+      // 競合マーカーの検出
+      const conflicts = await detectConflictMarkers();
+      if (conflicts.length === 0) {
+        return '競合はありません。';
+      }
+      return `${conflicts.length}件の競合を検出しました:\n` +
+             conflicts.map(c => `- ${c.heading}`).join('\n');
     }
   }
 }
@@ -183,26 +224,54 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
 #### 受け入れ基準
 
-- [ ] ファイル読み取り時にハッシュ値を記録
-- [ ] 書き込み前に外部変更を検知
+**Step 1: 基本的な競合検知** ✅ (完了)
+- [x] ファイル読み取り時にハッシュ値を記録
+- [x] 書き込み前に外部変更を検知
+- [x] 競合時にエラーメッセージ表示
+
+**Step 1.5: 競合マーカー方式** (次期実装)
+- [ ] セクション単位のハッシュ比較
+- [ ] 他セクション変更時の自動マージ
+- [ ] 同一セクション変更時の競合マーカー挿入
+- [ ] `action: 'detect-conflicts'` 実装
+- [ ] `action: 'resolve-conflict'` 実装(3パターン対応)
+- [ ] 競合解決のテストシナリオ
+
+**Step 2: Git統合** (Phase 2後半)
 - [ ] Git管理状態を自動判定
-- [ ] 競合発生時に3-way diff表示
-- [ ] 人間開発者に判断を促すUI（CLIでの選択肢表示）
-- [ ] 競合解決後の再試行機能
-- [ ] 自動バックアップ機能（`.copilot-instructions.backup/`）
-- [ ] ユニットテスト（並行書き込みシミュレーション）
+- [ ] `git status`で未コミット変更を検知
+- [ ] `git diff`で変更内容を表示
+
+**Step 3: 高度な機能** (Phase 3)
+- [ ] 3-way diff表示
+- [ ] 自動バックアップ機能(`.copilot-instructions.backup/`)
+- [ ] 複数Copilotセッション間の排他制御
 
 #### 関連課題
 
 - PBI-002: ロールバック機能（変更履歴管理）
 - PBI-003: 複数Copilotセッション間の排他制御
 
-#### 備考
+#### 実装履歴
 
-この機能は**Phase 2**で実装すべき。現在のMVPでは以下の前提で運用:
-- Copilotが指示書を更新中は人間開発者が編集しない
-- Git操作は指示書更新の前後で実施
-- 問題が発生したら手動でgit revertで復旧
+**2025年12月1日 - Step 1完了**
+- SHA-256ハッシュによる基本的な競合検知
+- `readWithState` / `writeWithConflictCheck` 実装
+- テスト4シナリオすべてパス
+
+**課題: 手詰まり問題の発見**
+```
+1. Copilot: 指示書を読み込み (hash: ABC)
+2. 人間: 指示書を編集 (hash: DEF) 
+3. Copilot: 更新試行 → 競合エラー
+4. Copilot: 再試行 → 同じエラー(古いhashを持っている)
+5. 🔴 手詰まり
+```
+
+**解決策: 競合マーカー方式(次期実装)**
+- 競合時も書き込み成功(マーカー付き)
+- 次回read時にCopilotが自動検知
+- Copilot主体で解決、必要時のみ人間に確認
 
 ---
 
