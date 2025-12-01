@@ -2981,6 +2981,480 @@ Copilot: 「承認を拒否しました。
 
 ---
 
+## Scenario 15: Copilotへの基本ガイダンス（Meta-instruction）
+
+### 背景
+
+MCPサーバが生成する指示書（`.github/copilot-instructions.md`）には、プロジェクト固有の規約やルールが含まれる。しかし、**Copilot自身がこのツール群をどう活用すべきか**の指示が欠けている。
+
+結果として:
+- ❌ 開発フェーズが変わっても、change_contextツールを使わない
+- ❌ ユーザーが新しい規約を指示しても、project_contextに登録しない（その場限りの対応）
+- ❌ instructions_structureで指示書を変更する際、自己変更の自覚がない
+- ❌ 新しい指示と既存のproject_contextの整合性をチェックしない
+
+### 目的
+
+生成される指示書に「メタ指示セクション」を自動挿入し、Copilotが:
+1. 開発状態の変更時に `change_context` を使う
+2. 新しい開発ルールを `project_context` に永続化する
+3. 指示書変更の影響範囲を自覚する
+4. 既存ルールとの整合性を確認する
+
+### ユーザーストーリー
+
+#### Story 15.1: 開発状態の管理
+
+**状況**:
+ユーザーが「実装が完了したので、テストフェーズに入ります」と指示。
+
+**期待動作**:
+```
+User: "実装が完了したので、テストフェーズに入ります"
+
+Copilot: (メタ指示を参照)
+         "開発状態を更新します。"
+         
+         (change_context を実行)
+         {
+           "action": "update",
+           "state": {
+             "phase": "testing",
+             "focus": ["ユニットテスト", "カバレッジ"]
+           }
+         }
+         
+         "✓ phase を testing に変更しました。
+          テスト関連の指示を優先します。
+          指示書が再生成されました。"
+```
+
+**メタ指示の該当部分**:
+```markdown
+### 開発状態の管理
+- フェーズ変更時は `change_context` で状態を更新
+  - 例: 開発→テスト、デバッグ→リファクタリング
+- 状態変更後、指示書は自動再生成されます
+```
+
+#### Story 15.2: 開発ルールの登録
+
+**状況**:
+ユーザーが「今後、すべてのAPI関数にはZodスキーマ検証を必須にしてください」と指示。
+
+**期待動作**:
+```
+User: "今後、すべてのAPI関数にはZodスキーマ検証を必須にしてください"
+
+Copilot: (メタ指示を参照)
+         "新しい開発ルールを永続化します。
+          既存のバリデーションルールを確認..."
+         
+         (project_context read でバリデーション関連を検索)
+         {
+           "action": "read",
+           "category": "バリデーション"
+         }
+         
+         "既存ルール: 入力検証は必須（登録済み）
+          新しいルールを追加します。"
+         
+         (project_context create を実行)
+         {
+           "action": "create",
+           "category": "バリデーション",
+           "title": "API関数のZodスキーマ検証",
+           "description": "すべてのAPI関数の引数と戻り値にZodスキーマ検証を必須とする",
+           "priority": 8,
+           "tags": ["API", "Zod", "型安全性"]
+         }
+         
+         "✓ 登録完了。今後このルールを適用します。"
+```
+
+**メタ指示の該当部分**:
+```markdown
+### 開発ルールの登録
+- ユーザーからの新しい規約・ルールは `project_context` に永続化
+- 登録前に既存ルールとの整合性を確認（`project_context read`）
+- 矛盾がある場合は、ユーザーに確認を求める
+```
+
+#### Story 15.3: 指示書の自己認識
+
+**状況**:
+ユーザーが「TypeScript規約のセクションを更新してください」と指示。
+
+**期待動作**:
+```
+User: "TypeScript規約のセクションに『Partial型の積極活用』を追加してください"
+
+Copilot: (メタ指示を参照)
+         "instructions_structure で指示書を更新します。
+          ⚠️ 注意: この操作により、この指示書自体が変更されます。"
+         
+         (instructions_structure update を実行)
+         {
+           "action": "update",
+           "heading": "conventions: TypeScript規約",
+           "content": "...(既存内容)\n\n- Partial型を積極的に活用"
+         }
+         
+         "✓ 更新完了。変更内容:
+          - セクション: conventions: TypeScript規約
+          - 追加: Partial型の積極活用
+          
+          外部変更検知機能により、競合が自動検出されます。"
+```
+
+**メタ指示の該当部分**:
+```markdown
+### 指示書の自己認識
+- `instructions_structure` は **この指示書自体** を変更するツール
+- update/delete/insert実行時は、変更内容を明示
+- 外部変更がある場合、競合検出機能が作動（`detect-conflicts`）
+```
+
+#### Story 15.4: 既存ルールとの照合
+
+**状況**:
+ユーザーが「Jestではなく、Vitestを使ってください」と指示したが、project_contextには「Jest必須」が登録済み。
+
+**期待動作**:
+```
+User: "テストフレームワークをVitestに変更してください"
+
+Copilot: (メタ指示を参照)
+         "既存のテスト関連ルールを確認します..."
+         
+         (project_context read でテスト関連を検索)
+         {
+           "action": "read",
+           "category": "テスト"
+         }
+         
+         "⚠️ 矛盾を検出しました:
+          - 既存ルール: Jest必須（優先度: 8）
+          - 新しい指示: Vitestに変更
+          
+          どちらを採用しますか？
+          1. 既存ルール（Jest）を維持
+          2. 新しい指示（Vitest）を採用し、既存ルールを更新
+          3. 両方を削除（フレームワーク指定なし）"
+
+User: "2番で。Vitestに変更してください"
+
+Copilot: (project_context update を実行)
+         {
+           "action": "update",
+           "id": "<既存のテストルールID>",
+           "title": "テストフレームワーク: Vitest",
+           "description": "Vitestを使用。高速で型安全なテスト環境。"
+         }
+         
+         "✓ 更新完了。Vitestに変更しました。"
+```
+
+**メタ指示の該当部分**:
+```markdown
+### 開発ルールの登録
+- 登録前に既存ルールとの整合性を確認（`project_context read`）
+- 矛盾がある場合は、ユーザーに確認を求める
+```
+
+### 実装アプローチ
+
+#### Phase A: メタ指示セクションの設計 🟠 High
+
+**目標**: メタ指示の内容とトーンを確定
+
+**実装内容**:
+1. **セクション構造の設計**
+   ```markdown
+   ## meta: ツール活用ガイド
+   
+   このMCPサーバは、指示書の外部記憶と動的生成を担います。
+   以下のツールを適切に活用してください。
+   
+   ### 開発状態の管理
+   - フェーズ変更時は `change_context` で状態を更新
+   - focus配列で現在の作業内容を記録
+   - 状態変更後、指示書は自動再生成されます
+   
+   ### 開発ルールの登録
+   - ユーザーからの新しい規約・ルールは `project_context` に永続化
+   - 登録前に既存ルールとの整合性を確認
+   - 矛盾がある場合は、ユーザーに確認を求める
+   
+   ### 指示書の自己認識
+   - `instructions_structure` は **この指示書自体** を変更するツール
+   - update/delete/insert実行時は、変更内容を明示
+   - 外部変更がある場合、競合検出機能が作動
+   
+   ### 既存プロジェクトへの導入
+   - 初回実行時は `onboarding` で既存指示書を分析
+   - 互換性がない場合、機能制限モードで動作
+   - マイグレーション提案を確認後、承認を得て実行
+   ```
+
+2. **トーンとスタイルの確定**
+   - 簡潔: 1項目1-2文
+   - 実行可能: 具体的なツール名とアクション
+   - 明示的: 「〜してください」「〜します」の命令/宣言形式
+
+3. **網羅性の確認**
+   - 6つのツール全てに言及（guidance除く）
+   - change_context, project_context, instructions_structure, onboarding, feedback
+
+**成果物**:
+- `docs/meta-instruction-template.md` - メタ指示のテンプレート
+- 約30-40行のMarkdownテキスト
+
+#### Phase B: generateInstructions への統合 🟠 High
+
+**目標**: メタ指示を動的に生成された指示書に挿入
+
+**実装内容**:
+1. **generateInstructions() の拡張**
+   ```typescript
+   // server/src/utils/generateInstructions.ts
+   
+   function generateMetaInstruction(context: DevelopmentContext): string {
+     const template = readMetaInstructionTemplate();
+     
+     // 開発状態に応じた動的調整
+     if (context.phase === 'testing') {
+       // テストフェーズでは、テスト関連の指示を強調
+     }
+     
+     return template;
+   }
+   
+   export async function generateInstructions(context: DevelopmentContext) {
+     const sections: string[] = [];
+     
+     // メタ指示を先頭に挿入
+     sections.push(generateMetaInstruction(context));
+     
+     // 既存のセクション生成ロジック
+     // ...
+     
+     return sections.join('\n\n');
+   }
+   ```
+
+2. **挿入位置の最適化**
+   - 先頭: Copilotが最初に読む → ツール活用を優先
+   - 末尾: プロジェクト規約を優先 → メタ指示は参照として
+   - **推奨**: 先頭（ツール活用の自覚が最優先）
+
+3. **change_context実行時の自動反映**
+   - 状態変更 → generateInstructions() 再実行 → メタ指示も更新
+
+**成果物**:
+- `server/src/utils/generateInstructions.ts` 修正（+50行）
+- `server/src/utils/metaInstructionTemplate.ts` 新規（メタ指示生成ロジック）
+
+#### Phase C: 動的な指示調整 🟡 Medium
+
+**目標**: 開発状態に応じてメタ指示を最適化
+
+**実装内容**:
+1. **phase別の動的調整**
+   ```typescript
+   function generateMetaInstruction(context: DevelopmentContext): string {
+     let meta = baseMetaInstruction;
+     
+     switch (context.phase) {
+       case 'development':
+         meta += '\n\n**現在: 開発フェーズ**\n';
+         meta += '- project_contextの活用を優先\n';
+         meta += '- 新規約は即座に登録\n';
+         break;
+       case 'testing':
+         meta += '\n\n**現在: テストフェーズ**\n';
+         meta += '- テスト規約の参照を優先\n';
+         meta += '- カバレッジ目標を確認\n';
+         break;
+       case 'debugging':
+         meta += '\n\n**現在: デバッグフェーズ**\n';
+         meta += '- 既存contextの確認を優先\n';
+         meta += '- 問題の根本原因を記録\n';
+         break;
+     }
+     
+     return meta;
+   }
+   ```
+
+2. **focus配列に応じた関連ツールの提示**
+   ```typescript
+   if (context.focus.includes('API')) {
+     meta += '- API関連: project_contextで既存API規約を確認\n';
+   }
+   if (context.focus.includes('認証')) {
+     meta += '- 認証関連: セキュリティ規約を最優先\n';
+   }
+   ```
+
+3. **冗長性の排除**
+   - 生成される指示書全体で、重複する指示を削除
+   - メタ指示は「ツールの使い方」に特化
+
+**成果物**:
+- `server/src/utils/metaInstructionTemplate.ts` 拡張（+80行）
+
+#### Phase D: テストとバリデーション 🟡 Medium
+
+**目標**: メタ指示が実際に効果を発揮するか検証
+
+**実装内容**:
+1. **動作確認テスト**
+   ```typescript
+   // server/test-meta-instruction.ts
+   
+   test('フェーズ変更時にchange_contextツールへの言及があること', async () => {
+     const content = await generateInstructions({
+       phase: 'development',
+       focus: [],
+       priority: 'medium',
+       mode: 'normal'
+     });
+     
+     assert(content.includes('change_context'));
+     assert(content.includes('フェーズ変更時'));
+   });
+   
+   test('新規約登録時にproject_contextツールへの言及があること', async () => {
+     const content = await generateInstructions({
+       phase: 'development',
+       focus: ['API'],
+       priority: 'high',
+       mode: 'normal'
+     });
+     
+     assert(content.includes('project_context'));
+     assert(content.includes('永続化'));
+   });
+   ```
+
+2. **Copilotによる実証**
+   - 実際にCopilotに指示書を読ませ、ツール使用を促す
+   - フェーズ変更指示 → change_context使用を確認
+   - 新規約指示 → project_context使用を確認
+
+3. **可読性確認**
+   - 生成された指示書全体の長さ
+   - メタ指示が読みやすいか
+   - プロジェクト規約との境界が明確か
+
+4. **パフォーマンス測定**
+   - generateInstructions() の実行時間
+   - トークン数の増加量
+
+**成果物**:
+- `server/test-meta-instruction.ts` 新規（100行）
+- パフォーマンスレポート
+
+### 実装要件まとめ
+
+#### 新規実装が必要
+
+**1. メタ指示テンプレート**:
+- ✅ 基本構造の設計
+- ✅ 4つのサブセクション（開発状態/開発ルール/指示書自己認識/オンボーディング）
+- ✅ 簡潔で実行可能な指示
+
+**2. generateInstructions拡張**:
+- メタ指示セクションの自動挿入
+- 挿入位置の最適化（先頭推奨）
+- change_context実行時の自動反映
+
+**3. 動的調整ロジック**:
+- phase別の指示強調
+- focus配列に応じた関連ツール提示
+- 冗長性の排除
+
+**4. テストとバリデーション**:
+- 自動テスト（メタ指示の存在確認）
+- Copilotによる実証テスト
+- 可読性とパフォーマンスの測定
+
+#### 既存機能への影響
+
+**1. generateInstructions()**:
+- メタ指示セクションの追加（先頭）
+- 約30-40行のテキスト追加
+- トークン数: +200〜300トークン
+
+**2. change_context**:
+- 既存動作に変更なし
+- 状態変更後の指示書再生成で、メタ指示も更新される
+
+**3. 生成される指示書**:
+- 全体の長さが増加（約5-10%）
+- プロジェクト規約の前にメタ指示が配置
+
+### 成功基準
+
+#### Phase A（設計）
+- [ ] メタ指示の内容が4つのサブセクションで構成
+- [ ] 簡潔で実行可能な指示形式
+- [ ] 6つのツール全てに言及
+
+#### Phase B（統合）
+- [ ] generateInstructions() にメタ指示挿入実装
+- [ ] change_context実行時の自動反映
+- [ ] 挿入位置が最適化
+
+#### Phase C（動的調整）
+- [ ] phase別の指示強調
+- [ ] focus配列に応じた関連ツール提示
+- [ ] 冗長性の排除
+
+#### Phase D（検証）
+- [ ] 自動テスト成功
+- [ ] Copilotがツールを使用することを実証
+- [ ] 可読性とパフォーマンスが許容範囲
+
+### 今後の拡張可能性
+
+1. **学習ベースの最適化**
+   - Copilotのツール使用頻度を記録
+   - 効果が低い指示を削除・調整
+
+2. **プロジェクト固有のカスタマイズ**
+   - ユーザーがメタ指示をカスタマイズ可能
+   - プロジェクトの性質に応じた指示強調
+
+3. **多言語対応**
+   - 英語版のメタ指示
+   - ロケールに応じた自動切替
+
+4. **メタ指示のバージョン管理**
+   - メタ指示の変更履歴
+   - 旧バージョンへのロールバック
+
+### 実装優先度
+
+🟠 **Phase A（設計）**: 高優先度
+- 全ての基盤
+- 早期にトーンとスタイルを確定
+
+🟠 **Phase B（統合）**: 高優先度
+- 実運用で必須
+- generateInstructionsの拡張
+
+🟡 **Phase C（動的調整）**: 中優先度
+- UX向上
+- Phase Bの動作確認後に実装
+
+🟡 **Phase D（検証）**: 中優先度
+- 効果測定
+- 継続的な改善の基盤
+
+---
+
 ### まとめ
 
 このScenario 14の実装により:
