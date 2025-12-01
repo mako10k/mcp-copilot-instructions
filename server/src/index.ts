@@ -10,6 +10,7 @@ import { instructionsStructure } from './tools/instructions_structure';
 import { changeContext } from './tools/change_context';
 import { feedback } from './tools/feedback';
 import { onboarding } from './tools/onboarding';
+import { handleGoalManagement } from './tools/goal_management';
 
 const server = new Server(
   {
@@ -275,6 +276,86 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['action'],
         },
       },
+      {
+        name: 'goal_management',
+        description:
+          'Manage hierarchical goals and track progress. Create main goal and sub-goals, ' +
+          'mark completion with auto-advancement, get filtered context for instructions.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['create', 'read', 'update', 'delete', 'complete', 'advance', 'get-context', 'set-current'],
+              description:
+                'Action: create(create goal) / read(read goal) / update(update goal) / delete(delete goal) / ' +
+                'complete(complete goal and auto-advance) / advance(manually advance to goal) / ' +
+                'get-context(get filtered goals) / set-current(set current goal)',
+            },
+            goalId: {
+              type: 'string',
+              description: 'Goal ID (required for read/update/delete/complete/advance/set-current)',
+            },
+            goal: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'Goal title',
+                },
+                description: {
+                  type: 'string',
+                  description: 'Goal description',
+                },
+                parentId: {
+                  type: 'string',
+                  description: 'Parent goal ID (omit for main goal)',
+                },
+                order: {
+                  type: 'number',
+                  description: 'Order within siblings (optional)',
+                },
+                dependencies: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Goal IDs that must be completed first',
+                },
+                notes: {
+                  type: 'string',
+                  description: 'Additional notes',
+                },
+              },
+              required: ['title', 'description'],
+              description: 'Goal data (required for create, optional for update)',
+            },
+            status: {
+              type: 'string',
+              enum: ['not-started', 'in-progress', 'completed', 'blocked'],
+              description: 'New status (for update)',
+            },
+            filter: {
+              type: 'object',
+              properties: {
+                status: {
+                  type: 'string',
+                  enum: ['not-started', 'in-progress', 'completed', 'blocked'],
+                  description: 'Filter by status',
+                },
+                parentId: {
+                  type: 'string',
+                  description: 'Filter by parent ID',
+                },
+                includeChildren: {
+                  type: 'boolean',
+                  description: 'Include all children recursively',
+                },
+              },
+              description: 'Filter criteria (for read)',
+            },
+          },
+          required: ['action'],
+        },
+      },
     ],
   };
 });
@@ -326,6 +407,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const result = await feedback(args as any);
         return {
           content: [{ type: 'text', text: result }],
+        };
+      }
+      case 'goal_management': {
+        const result = await handleGoalManagement(args as any);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
       }
       default:
