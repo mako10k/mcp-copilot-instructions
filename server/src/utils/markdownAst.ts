@@ -10,7 +10,7 @@ import {
   readInstructionsFileWithState,
   writeInstructionsFileWithConflictCheck,
   FileState,
-} from './fileSystem';
+} from './fileSystem.js';
 
 export interface Section {
   level: number;
