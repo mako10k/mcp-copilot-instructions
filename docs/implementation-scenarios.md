@@ -1174,3 +1174,234 @@ change_context({
 - **セクション制限**: maxSections=10, maxItemsPerSection=3-4
 - **Git統合**: 指示書データベース全体をGit管理推奨
 - ロバスト性の向上
+
+---
+
+## シナリオ9: 変更履歴管理とロールバック（Phase 2）
+
+**日付**: 2025年12月1日  
+**目的**: 動的指示書生成の履歴を自動記録し、任意の時点にロールバック可能にする
+
+### 課題背景
+- 指示書が動的生成されるが、変更履歴が残らない
+- 問題が発生しても元の状態に戻せない
+- どの変更でどう変わったか追跡できない
+- 試行錯誤が困難
+
+### 実装内容
+
+#### 1. 履歴管理ユーティリティ (`server/src/utils/historyManager.ts`)
+
+**データ構造**:
+```typescript
+interface HistoryEntry {
+  timestamp: string;  // ISO 8601形式
+  context: DevelopmentContext;
+  generatedHash: string;
+  sectionsCount: number;
+  filePath: string;
+}
+
+interface HistoryDetail extends HistoryEntry {
+  generatedContent: string;  // 実際に生成された内容
+}
+```
+
+**ファイル命名規則**: `YYYY-MM-DDTHH-mm-ss-SSSZ-{hash8文字}.json`
+
+**主要機能**:
+- `recordHistory()`: 指示書生成時に自動記録
+- `listHistory(limit?)`: 履歴一覧取得（新しい順）
+- `getHistoryByTimestamp(timestamp | index)`: 特定の履歴取得
+- `calculateDiff(from, to)`: 2つの履歴の差分計算
+- `cleanupOldHistory(daysToKeep)`: 古い履歴削除（デフォルト30日）
+
+#### 2. `generateInstructions()` に履歴記録を統合
+
+```typescript
+// 指示書生成後、自動的に履歴を記録
+await recordHistory(context, hash, selectedInstructions.length, markdown);
+```
+
+#### 3. `change_context` ツールに新アクション追加
+
+**rollback**: 指定した履歴に復元
+```typescript
+change_context({
+  action: "rollback",
+  timestamp: 1  // 0=最新、1=1つ前、または ISO timestamp文字列
+})
+```
+
+**list-history**: 履歴一覧表示
+```typescript
+change_context({
+  action: "list-history",
+  limit: 10  // 最大表示件数
+})
+```
+
+**show-diff**: 2つの履歴の差分表示
+```typescript
+change_context({
+  action: "show-diff",
+  from: 1,  // 比較元（デフォルト: 1）
+  to: 0     // 比較先（デフォルト: 0=最新）
+})
+```
+
+**cleanup-history**: 古い履歴削除
+```typescript
+change_context({
+  action: "cleanup-history",
+  daysToKeep: 30  // デフォルト: 30日
+})
+```
+
+### テスト結果
+
+**テスト1: 初期履歴確認**
+```json
+{
+  "success": true,
+  "count": 0,
+  "history": []
+}
+```
+
+**テスト2: 開発フェーズで変更（履歴作成）**
+```json
+{
+  "success": true,
+  "previousContext": { "phase": "development", "focus": [], ... },
+  "currentContext": { "phase": "development", "focus": ["API認証", "JWT"], ... },
+  "regenerated": {
+    "success": true,
+    "sectionsCount": 8,
+    "generatedHash": "33a5833c..."
+  }
+}
+```
+
+**テスト3: リファクタリングフェーズに変更**
+```json
+{
+  "sectionsCount": 4,
+  "generatedHash": "671eec08..."
+}
+```
+
+**テスト4: 履歴一覧表示**
+```json
+{
+  "success": true,
+  "count": 2,
+  "history": [
+    {
+      "index": 0,
+      "timestamp": "2025-12-01T06:57:21.359Z",
+      "phase": "refactoring",
+      "focus": ["コードレビュー", "テストカバレッジ"],
+      "sectionsCount": 4,
+      "hash": "671eec08"
+    },
+    {
+      "index": 1,
+      "timestamp": "2025-12-01T06:57:20.348Z",
+      "phase": "development",
+      "focus": ["API認証", "JWT"],
+      "sectionsCount": 8,
+      "hash": "33a5833c"
+    }
+  ]
+}
+```
+
+**テスト5: 差分表示（index 1 vs index 0）**
+```json
+{
+  "success": true,
+  "diff": {
+    "contextChanges": {
+      "phase": "refactoring",
+      "focus": ["コードレビュー", "テストカバレッジ"],
+      "priority": "medium"
+    },
+    "sectionsCountDiff": -4,
+    "contentDiff": "Content changed (33a5833c → 671eec08)"
+  }
+}
+```
+
+**テスト6: ロールバック（1つ前に戻す）**
+```json
+{
+  "success": true,
+  "message": "Rolled back successfully",
+  "restoredContext": {
+    "phase": "development",
+    "focus": ["API認証", "JWT"],
+    "priority": "high"
+  },
+  "timestamp": "2025-12-01T06:57:20.348Z",
+  "sectionsCount": 8
+}
+```
+
+**テスト7: ロールバック後のコンテキスト確認**
+- コンテキストと指示書が正しく復元されている: ✓
+
+**テスト8: 古い履歴のクリーンアップ**
+```json
+{
+  "success": true,
+  "message": "Cleaned up 0 old history entries",
+  "deletedCount": 0
+}
+```
+
+### 実装ファイル
+- `server/src/utils/historyManager.ts`: 履歴管理ロジック（新規）
+- `server/src/utils/generateInstructions.ts`: recordHistory()呼び出し追加
+- `server/src/tools/change_context.ts`: 4つのアクション追加（rollback/list-history/show-diff/cleanup-history）
+- `server/src/index.ts`: ツールスキーマ更新
+- `server/test-history.ts`: テストスクリプト（8シナリオ）
+
+### 履歴ファイルの例
+```
+.copilot-state/history/
+  ├── 2025-12-01T06-57-20-348Z-33a5833c.json  (6.9KB)
+  └── 2025-12-01T06-57-21-359Z-671eec08.json  (4.1KB)
+```
+
+各ファイルには以下が含まれる:
+- タイムスタンプ
+- 開発コンテキスト（phase/focus/priority/mode）
+- 生成されたMarkdownの完全な内容
+- ハッシュ値
+- セクション数
+
+### 成果
+✅ **自動履歴記録**: generateInstructions()実行時に自動保存  
+✅ **簡単なロールバック**: インデックスまたはタイムスタンプ指定で復元  
+✅ **履歴一覧**: 直近の変更を時系列で確認  
+✅ **差分表示**: 2つの時点の変更内容を比較  
+✅ **自動クリーンアップ**: 古い履歴を自動削除（30日デフォルト）  
+✅ **完全な復元**: コンテキスト + 指示書の両方を復元  
+✅ **軽量な設計**: change_contextに統合、新ツール不要
+
+### 設計の確定事項
+- **保存場所**: `.copilot-state/history/`（Gitignore推奨）
+- **保持期間**: 30日（設定可能）
+- **ファイル形式**: JSON（タイムスタンプ + コンテキスト + 生成内容）
+- **命名規則**: ISO timestamp + hash8文字
+- **インデックス指定**: 0=最新、1=1つ前、2=2つ前...
+- **統合方針**: 新ツール不要、change_contextに4アクション追加
+
+### PBI-002 完了
+- [x] 変更時に自動でスナップショット作成
+- [x] ロールバック機能の実装
+- [x] 履歴一覧表示機能
+- [x] 差分表示機能
+- [x] 古い履歴の自動クリーンアップ
+

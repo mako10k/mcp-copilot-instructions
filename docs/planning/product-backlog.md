@@ -48,6 +48,16 @@
 - **完了日**: 2025年12月1日
 - **関連**: Scenario 3, 5
 
+### ✅ PBI-002 (High): 変更履歴管理とロールバック機能
+- **AC**: 自動スナップショット作成、ロールバック、履歴一覧、差分表示
+- **完了日**: 2025年12月1日
+- **関連**: Scenario 9
+- **実装内容**:
+  - `.copilot-state/history/` に履歴を自動記録
+  - `change_context` に4アクション追加（rollback/list-history/show-diff/cleanup-history）
+  - タイムスタンプまたはインデックス指定でロールバック
+  - 30日以上の古い履歴を自動削除
+
 ---
 
 ## 🔴 Critical Priority (Phase 2)
@@ -284,34 +294,6 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
 ## 🟠 High Priority (Phase 2)
 
-### PBI-002: 変更履歴管理とロールバック機能
-
-**カテゴリ**: Version Control / Safety  
-**優先度**: 🟠 High  
-**登録日**: 2025年12月1日  
-**エピック**: E4  
-**関連ストーリー**: S7
-
-#### 概要
-
-指示書の変更履歴を自動記録し、問題があればロールバック可能にする。
-
-#### 要件
-
-- すべての変更をタイムスタンプ付きで記録
-- `.copilot-context/history/`に差分を保存
-- `adaptive_instructions(action: "rollback")`でバージョン指定復元
-- 最大保持期間: 30日（設定可能）
-
-#### 受け入れ基準
-
-- [ ] 変更時に自動でスナップショット作成
-- [ ] ロールバック機能の実装
-- [ ] 履歴一覧表示機能
-- [ ] 差分表示機能
-
----
-
 ### PBI-003: 複数Copilotセッション間の排他制御
 
 **カテゴリ**: Concurrency Control  
@@ -480,13 +462,16 @@ MCPツール群の統合テスト、GitHub Actions設定。
 - ✅ 実プロジェクト活用とUX改善 (Scenario 5)
 - ✅ 用語定義の明確化
 
-### Phase 2 (次期) 🎯
+### Phase 2 (進行中) 🎯
 **目標**: 安定性・並行制御・履歴管理
 
-**優先項目**:
-1. 🔴 PBI-001: 外部変更検知（最優先）
-2. 🟠 PBI-002: 変更履歴管理
-3. 🟠 PBI-003: 排他制御
+**完了項目**:
+1. ✅ PBI-001: 外部変更検知（Step 1, 1.5, 2完了）
+2. ✅ PBI-002: 変更履歴管理（完了）
+3. ✅ 動的指示書生成エンジン（完了）
+
+**残り項目**:
+1. 🟠 PBI-003: 排他制御
 
 ### Phase 3 (将来) 📋
 **目標**: UX改善、CRUD完成、適応的機能

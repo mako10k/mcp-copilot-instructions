@@ -1,6 +1,9 @@
 {
   "phase": "development",
-  "focus": [],
-  "priority": "medium",
+  "focus": [
+    "API認証",
+    "JWT"
+  ],
+  "priority": "high",
   "mode": "normal"
 }

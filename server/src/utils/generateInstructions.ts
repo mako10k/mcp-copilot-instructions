@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import matter from 'gray-matter';
 import { calculateHash } from '../utils/fileSystem';
+import { recordHistory } from './historyManager';
 
 /**
  * 開発コンテキスト（文脈・状態）
@@ -238,6 +239,9 @@ export async function generateInstructions(context: DevelopmentContext): Promise
   await fs.writeFile(outputPath, markdown, 'utf-8');
   
   const hash = calculateHash(markdown);
+  
+  // 履歴を記録
+  await recordHistory(context, hash, selectedInstructions.length, markdown);
   
   return {
     success: true,

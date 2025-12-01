@@ -103,8 +103,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             action: {
               type: 'string',
-              enum: ['update', 'read', 'reset'],
-              description: 'アクション: update(状態更新) / read(現在の状態取得) / reset(デフォルトに戻す)',
+              enum: ['update', 'read', 'reset', 'rollback', 'list-history', 'show-diff', 'cleanup-history'],
+              description: 
+                'アクション: update(状態更新) / read(現在の状態取得) / reset(デフォルトに戻す) / ' +
+                'rollback(履歴から復元) / list-history(履歴一覧) / show-diff(差分表示) / cleanup-history(古い履歴削除)',
             },
             state: {
               type: 'object',
@@ -135,6 +137,26 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             autoRegenerate: {
               type: 'boolean',
               description: '自動的に指示書を再生成するか（デフォルト: true）',
+            },
+            timestamp: {
+              type: ['string', 'number'],
+              description: 'ロールバック先のタイムスタンプまたはインデックス（rollbackの場合、0=最新）',
+            },
+            limit: {
+              type: 'number',
+              description: '履歴の表示件数（list-historyの場合）',
+            },
+            from: {
+              type: ['string', 'number'],
+              description: '比較元のタイムスタンプまたはインデックス（show-diffの場合、デフォルト: 1）',
+            },
+            to: {
+              type: ['string', 'number'],
+              description: '比較先のタイムスタンプまたはインデックス（show-diffの場合、デフォルト: 0）',
+            },
+            daysToKeep: {
+              type: 'number',
+              description: '保持する日数（cleanup-historyの場合、デフォルト: 30）',
             },
           },
           required: ['action'],
