@@ -122,7 +122,7 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
       
     case 'structured':
       result += '✅ **Pattern: Structured**\n\n';
-      result += `Detected ${analysis.structured!.sections.length} section(s).\n\n';
+      result += `Detected ${analysis.structured!.sections.length} section(s).\n\n`;
       result += '[Section List]\n';
       analysis.structured!.sections.forEach((s, index) => {
         result += `${index + 1}. **${s.heading}**\n`;
@@ -136,7 +136,7 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
       
     case 'unstructured':
       result += '⚠️ **Pattern: Unstructured**\n\n';
-      result += `Total ${analysis.unstructured!.lineCount} lines (${analysis.unstructured!.contentLength} characters)\n\n';
+      result += `Total ${analysis.unstructured!.lineCount} lines (${analysis.unstructured!.contentLength} characters)\n\n`;
       result += '[Current Issues]\n';
       result += 'No section structure, difficult to manage.\n\n';
       result += '[Benefits of Structuring]\n';

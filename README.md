@@ -1,46 +1,46 @@
 # mcp-copilot-instructions
 
-**LLMのアテンション分散問題を「文脈依存の動的指示書生成」で解決する**
+**Solving LLM Attention Dispersion Problem with "Context-Dependent Dynamic Instruction Generation"**
 
-## 課題
-ガチガチに指示書を追記 → 膨大化 → LLMのアテンション分散 → 重要な指示が効かない
+## Challenge
+Adding extensive instructions → Massive growth → LLM attention dispersion → Important instructions become ineffective
 
-## 解決策
+## Solution
 ```
-巨大な指示書データベース（.copilot-instructions/以下、Git管理）
-    ↓ 文脈認識エンジン（MCPサーバ）
-    ↓ ToDo管理から現在の状態・流れを把握
-    ↓ 関連する指示だけを抽出
-.github/copilot-instructions.md（動的生成）
-    ↓ 今必要な指示だけに厳選
-LLM（集中したアテンション）
+Huge instruction database (.copilot-instructions/, Git managed)
+    ↓ Context recognition engine (MCP server)
+    ↓ Understand current state/flow from ToDo management
+    ↓ Extract only relevant instructions
+.github/copilot-instructions.md (dynamically generated)
+    ↓ Narrowed down to only necessary instructions for current context
+LLM (Focused attention)
 ```
 
-## 目的
-- **指示書の肥大化によるアテンション分散を防ぐ**: プロジェクト全体の知識は保持しつつ、LLMには「今の流れ」に必要な指示だけを提供
-- **文脈依存の動的生成**: ToDoやタスク状態から、現在のフェーズに適切な指示を自動抽出
-- **Git管理による変更履歴**: 指示書データベース全体をGit管理し、ブランチ戦略・レビュー・ロールバックを活用
+## Purpose
+- **Prevent attention dispersion from instruction bloat**: Retain overall project knowledge while providing LLM with only instructions needed for "current flow"
+- **Context-dependent dynamic generation**: Automatically extract appropriate instructions for current phase from ToDo and task state
+- **Git-managed change history**: Manage entire instruction database with Git, utilize branching strategy, review, and rollback
 
-## 重要: 用語の定義
+## Important: Terminology Definition
 
-本プロジェクトでは「ユーザー」が誰を指すかに注意が必要です:
+In this project, careful attention is required regarding who "user" refers to:
 
-- **Copilot (LLM)**: MCPツールの**主要利用者**。自らツールを呼び出してコンテキストを管理。
-- **人間開発者**: Copilotを使用する実際の開発者。Copilotに指示を出し、最終判断を行う。
+- **Copilot (LLM)**: **Primary user** of MCP tools. Calls tools itself to manage context.
+- **Human Developer**: Actual developer using Copilot. Gives instructions to Copilot and makes final decisions.
 
-特に明記がない限り、「ユーザー」は**Copilot (LLM)自身**を指します。
+Unless specifically noted, "user" refers to **Copilot (LLM) itself**.
 
-## 主要ドキュメント
-- 設計: `docs/mcp-server-design.md`
-- 運用: `docs/operation-scenarios.md`
-- 調査: `research/copilot-instructions-research.md`
-- 指示書: `.github/copilot-instructions.md`
+## Main Documentation
+- Design: `docs/mcp-server-design.md`
+- Operations: `docs/operation-scenarios.md`
+- Research: `research/copilot-instructions-research.md`
+- Instructions: `.github/copilot-instructions.md`
 
-## 運用ポリシー（抜粋）
-- 定期レビュー: 週1以上、重要変更は即時反映
-- 変更の定着: 会話で決まった方針は指示書・コンテキストへ反映
-- 矛盾管理: 旧ルールの無効化と新ルールの優先を明示
+## Operations Policy (Excerpt)
+- Regular review: At least once a week, immediate reflection for important changes
+- Change retention: Reflect decisions made in conversations into instructions and context
+- Conflict management: Explicitly invalidate old rules and prioritize new rules
 
-## 開発の次の一手
-- MCPツール群の実装（guidance / instructions_structure / project_context / user_feedback / adaptive_instructions）
-- CIで週次レビューの自動チェックを有効化
+## Next Development Steps
+- Implementation of MCP tool suite (guidance / instructions_structure / project_context / user_feedback / adaptive_instructions)
+- Enable automated weekly review checks in CI
