@@ -1,57 +1,274 @@
-# 運用シナリオ: mcp-copilot-instructions 開発
+# Operation Scenarios: mcp-copilot-instructions Development
 
-**作成日**: 2025年12月1日  
-**バージョン**: 1.0.0
-
----
-
-## 冒頭定義（本プロジェクトの前提と目的）
-
-- **ユーザの状態・性質は与条件**: ユーザの記憶精度・判断力・論理的思考・学習力は尊重しつつも、本プロジェクトではユーザ側の改善を直接の目的とはしない。
-- **LLMの制約を突破する**: 現在のLLMが持つコンテキストウィンドウの制約や持続記憶の欠如による「忘却」「再現性の揺らぎ」を、会話ログではなく「指示書の動的更新」を通じて克服する。
-- **指示書＝外部記憶の主軸**: 各チャットターン冒頭で必ず読み込まれる`.github/copilot-instructions.md`を、MCPツール群で継続的・構造的・一貫的に更新し、Copilotが毎回同じ土台から判断できる状態を維持する。
-- **主対象はAIの挙動の安定化**: ユーザの指示は最小限の意図提示に留め、Copilotが能動的に指示書・コンテキスト・フィードバックをCRUDすることで、挙動の安定化と品質向上を実現する。
-
-## ペルソナ定義
-
-### 1. まこと（開発者）
-- **役割**: MCPサーバ開発を行うプログラマ
-- **目標**: `mcp-copilot-instructions`というMCPサーバを実装する
-- **課題**: 
-  - チャットのコンテキストウィンドウが小さいため、AIが過去の判断を忘れがち
-  - 人手での指示書メンテは行わず、AIが自律的に更新する必要がある
-- **強み**: 
-  - 指示書は毎ターンAIが読み込む「外部記憶」であることを理解している
-  - 指示の提示は最小限にし、更新はCopilotに委ねる
-
-#### ユーザ側の課題（インタラクション視点）
-- **記憶誤解**: LLMのコンテキストウィンドウは小さい。過去の指示・指摘が常に「記憶されている」と仮定して会話を進めると、AIは覚えていないことがある。
-- **ポリシーの揺らぎ**: ユーザ自身の指示が誤っていたり、矛盾していることがある（ポリシーや信念が含まれるため）。この矛盾は会話だけでは解消しづらい。
-- **人間扱いの落とし穴**: AIを人と同じ持続記憶で扱うと齟齬が生じる。外部記憶（指示書）へ明示的に反映する前提が必要。
-- **再現性の不足**: 同じ意図でも表現が毎回変わり、AI側で一貫した追従が難しくなる。
-
-#### ユーザ側のベストプラクティス（会話運用）
-- **指示は短く要点のみ**: 長文で語らず、要件・制約・優先度を箇条書きで提示。
-- **変更は指示書に反映**: 会話での新方針や修正は、Copilotにツールで指示書へ反映させる（会話ログに頼らない）。
-- **矛盾は明示**: 旧方針と新方針の差分を明示し、旧方針の破棄・更新を指示書へ記録。
-- **確認質問を許可**: 不一致時はCopilotの質問を許容し、指示書更新までを完了定義に含める。
-
-### 2. Copilot（AIアシスタント）
-- **役割**: MCPサーバのユーザー（MCPクライアント機能も持つ）
-- **能力**: 
-  - 毎ターン冒頭に指示書を読み、差分を検知して自律的に遵守する
-  - MCPツールで指示書・コンテキスト・フィードバックを能動的にCRUDし、自己改善する
-  - コード生成・修正を行い、失敗を自ら記録・反映する
-- **制約**: 
-  - コンテキストウィンドウは有限だが、指示書を外部記憶として活用可能
-  - 会話履歴は薄れるため、必ず指示書とコンテキストから再構築する
+**Created**: December 1, 2025  
+**Version**: 1.0.0
 
 ---
 
-## シナリオ1: プロジェクト初日 - セットアップと初期実装
+## Preamble (Project Assumptions and Objectives)
 
-### 状況
-プロジェクトが初期化前の状態。Copilotは指示書の有無と現状を確認し、初期セットアップを主導する。
+- **User State is Given Condition**: While respecting user memory accuracy, judgment, logical thinking, and learning ability, this project does not directly aim to improve the user side.
+- **Overcoming LLM Constraints**: Overcome current LLM context window limitations and lack of persistent memory ("forgetting," "reproducibility variance") through "dynamic instruction updates" rather than conversation logs.
+- **Instructions = External Memory Backbone**: The `.github/copilot-instructions.md` file, which is read at the beginning of each chat turn, is continuously, structurally, and consistently updated via MCP tools, maintaining a state where Copilot can make decisions from the same foundation every time.
+- **Primary Target is AI Behavior Stabilization**: User instructions remain minimal intent presentations, while Copilot proactively CRUDs instructions, context, and feedback to achieve behavior stabilization and quality improvement.
+
+## Persona Definitions
+
+### 1. Makoto (Developer)
+- **Role**: Programmer developing MCP server
+- **Goal**: Implement the `mcp-copilot-instructions` MCP server
+- **Challenges**: 
+  - AI tends to forget past decisions due to small chat context window
+  - Need AI to autonomously update instructions without manual maintenance
+- **Strengths**: 
+  - Understands that instructions are "external memory" read by AI every turn
+  - Keeps instruction presentation minimal, delegates updates to Copilot
+
+#### User-Side Challenges (Interaction Perspective)
+- **Memory Misconception**: LLM context window is small. If conversation proceeds assuming past instructions/points are always "remembered," AI may not recall them.
+- **Policy Fluctuation**: User's own instructions may be incorrect or contradictory (containing policies and beliefs). These contradictions are hard to resolve through conversation alone.
+- **Human-Treatment Pitfall**: Treating AI like humans with persistent memory causes discrepancies. Need explicit reflection to external memory (instructions).
+- **Lack of Reproducibility**: Same intent expressed differently each time makes consistent AI tracking difficult.
+
+#### User-Side Best Practices (Conversation Management)
+- **Keep Instructions Short and Focused**: Present requirements, constraints, and priorities in bullet points, not long text.
+- **Reflect Changes to Instructions**: Have Copilot reflect new policies or corrections to instructions via tools (don't rely on conversation logs).
+- **Explicitly State Contradictions**: Clearly show difference between old and new policies, record old policy deletion/update in instructions.
+- **Allow Confirmation Questions**: When inconsistencies exist, allow Copilot's questions and include instruction update in completion definition.
+
+### 2. Copilot (AI Assistant)
+- **Role**: MCP server user (also has MCP client functionality)
+- **Capabilities**: 
+  - Reads instructions at the beginning of every turn, detects differences, and autonomously complies
+  - Proactively CRUDs instructions, context, and feedback via MCP tools for self-improvement
+  - Generates/modifies code, records failures, and reflects them
+- **Constraints**: 
+  - Context window is finite, but can leverage instructions as external memory
+  - Conversation history fades, so must always reconstruct from instructions and context
+
+---
+
+## Scenario 0: Goal Management System - Never Losing Sight of Objectives
+
+### Situation
+During long development sessions spanning multiple days, both developers and AI assistants tend to lose sight of the ultimate goal, getting absorbed in implementation details and sub-tasks. This scenario demonstrates how the Goal Management System prevents this problem.
+
+### Conversation Flow
+
+#### Turn 1: Setting Up Project Goals
+
+**Makoto**: 
+> Let's implement Phase 2 of the MCP server. Set up the goal hierarchy so we don't lose track of what we're trying to achieve.
+
+**Copilot (Internal Processing)**:
+```
+1. Turn starts → Read .github/copilot-instructions.md
+2. Check if goal management is initialized
+3. If not, create initial goal hierarchy
+```
+
+**Copilot → MCP Server**:
+```typescript
+goal_management({
+  action: "create",
+  goal: {
+    title: "Complete MCP Copilot Instructions Server",
+    description: "Build fully functional MCP server with dynamic instruction management",
+    parentId: null  // This is the main goal
+  }
+})
+
+goal_management({
+  action: "create",
+  goal: {
+    title: "Phase 2: Dynamic Generation Engine",
+    description: "Implement context-aware instruction filtering and generation",
+    parentId: "goal-main",
+    order: 2
+  }
+})
+
+goal_management({
+  action: "create",
+  goal: {
+    title: "Implement change_context tool",
+    description: "Lightweight tool for updating development state",
+    parentId: "goal-phase2",
+    order: 1
+  }
+})
+```
+
+**Copilot**: 
+> Goal hierarchy initialized. Current focus: "Implement change_context tool"
+> 
+> **Goal Path**:
+> Main Goal → Phase 2: Dynamic Generation → Implement change_context
+> 
+> This structure will be visible in every instruction set, ensuring we never lose sight of the ultimate objective.
+
+---
+
+#### Turn 2: Working on Implementation (Next Day)
+
+**Makoto** (starts new chat session):
+> Continue with the change_context implementation.
+
+**Copilot (Internal Processing)**:
+```
+1. Turn starts → Read .github/copilot-instructions.md
+2. Goal section is present:
+   🎯 Ultimate Goal: Complete MCP Server
+   📍 Current: Phase 2 → change_context tool
+   ⬅️ Previous: (Phase 1 completed)
+   ➡️ Next: Implement scoring algorithm
+3. Immediately understands context without asking
+```
+
+**Copilot**: 
+> Continuing with change_context implementation. Based on the current goal structure:
+> - Main objective: Dynamic instruction generation
+> - Current task: change_context tool (auto-regeneration trigger)
+> - Next up: Scoring algorithm
+> 
+> Let me check the existing implementation...
+
+[Proceeds with work immediately, no context loss]
+
+---
+
+#### Turn 3: Completing a Goal
+
+**Makoto**:
+> The change_context tool is working. Mark it complete and move on.
+
+**Copilot → MCP Server**:
+```typescript
+goal_management({
+  action: "complete",
+  goalId: "task-change-context"
+})
+```
+
+**Copilot (Internal Processing)**:
+```
+1. Mark task-change-context as completed
+2. Auto-advance to next sibling: task-scoring-algorithm
+3. Update current-context.json
+4. Move task-change-context to "recently completed"
+5. Regenerate instructions with updated goals
+```
+
+**Copilot**:
+> ✓ "Implement change_context tool" marked as completed.
+> 
+> **Updated Goal Context**:
+> - Ultimate: Complete MCP Server
+> - Current Path: Phase 2 → **Implement scoring algorithm** ← New focus
+> - Recently Completed: Implement change_context ✓
+> - Next Up: Implement generate_instructions tool
+> 
+> Instructions automatically updated. Ready to start scoring algorithm implementation.
+
+---
+
+#### Turn 4: Discovering Need for Sub-Goal (1 Week Later)
+
+**Makoto** (new chat session):
+> The scoring algorithm needs proper validation. Add that as a requirement.
+
+**Copilot (Internal Processing)**:
+```
+1. Turn starts → Read instructions
+2. Goal section shows:
+   Current: Phase 2 → Implement scoring algorithm
+3. User wants to add sub-task
+```
+
+**Copilot → MCP Server**:
+```typescript
+goal_management({
+  action: "create",
+  goal: {
+    title: "Add scoring validation and tests",
+    description: "Validate scoring rules and add comprehensive tests",
+    parentId: "task-scoring-algorithm",  // Sub-task of current goal
+    order: 1
+  }
+})
+
+goal_management({
+  action: "set-current",
+  goalId: "subtask-scoring-validation"
+})
+```
+
+**Copilot**:
+> Added sub-goal: "Add scoring validation and tests"
+> 
+> **Updated Structure**:
+> ```
+> Phase 2: Dynamic Generation Engine
+> └── Implement scoring algorithm (In Progress)
+>     ├── Core algorithm implementation ← Previous
+>     ├── Add scoring validation and tests ← Current
+>     └── Performance optimization ← Next
+> ```
+> 
+> Focus shifted to validation. Ultimate goal remains: Complete MCP Server.
+
+---
+
+#### Turn 5: Checking Overall Progress (2 Weeks Later)
+
+**Makoto**:
+> Where are we in the overall project?
+
+**Copilot → MCP Server**:
+```typescript
+goal_management({
+  action: "get-context"
+})
+```
+
+**Copilot**:
+> **Project Progress Overview**:
+> 
+> 🎯 **Ultimate Goal**: Complete MCP Copilot Instructions Server
+> 
+> **Phase Status**:
+> - ✅ Phase 1: MVP (Completed)
+>   - ✓ Basic CRUD operations
+>   - ✓ Git integration
+>   - ✓ Conflict detection
+> 
+> - 🔄 Phase 2: Dynamic Generation Engine (In Progress - 60%)
+>   - ✓ change_context tool
+>   - 🔄 Scoring algorithm (Current: Validation)
+>   - ⏭️ generate_instructions tool
+> 
+> - ⏸️ Phase 3: Advanced Features (Not Started)
+> 
+> **Current Focus**: Adding scoring validation
+> **Next Milestone**: Complete generate_instructions tool
+> **Ultimate Target**: Full dynamic instruction management
+
+---
+
+### Key Benefits Demonstrated
+
+1. **No Context Loss**: Even after weeks and multiple chat sessions, current goal is immediately clear
+2. **Automatic Advancement**: Completing goals automatically moves focus to next item
+3. **Hierarchical Clarity**: Always see ultimate goal, current path, and next steps
+4. **Flexible Structure**: Can add sub-goals dynamically as needs arise
+5. **Progress Visibility**: Clear view of what's done, current, and upcoming
+
+---
+
+## Scenario 1: Project First Day - Setup and Initial Implementation
+
+### Situation
+Project in pre-initialization state. Copilot checks for instructions and current state, leads initial setup.
 
 ### 会話の流れ
 
