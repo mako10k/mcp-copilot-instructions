@@ -1,213 +1,213 @@
 # Inception Deck - mcp-copilot-instructions
 
-**作成日**: 2025年12月1日  
-**プロジェクト**: LLMアテンション分散問題の解決
+**Created**: December 1, 2025  
+**Project**: Solving LLM Attention Dispersion Problem
 
 ---
 
-## 1. 我々はなぜここにいるのか (Why)
+## 1. Why Are We Here? (Why)
 
-### 本質的な問題
-開発を進めるほど、`.github/copilot-instructions.md`はガチガチに詳細化される。  
-→ 指示書が膨大になる  
-→ LLMのアテンション（注意力）が分散する  
-→ **「今の流れや状態に本当に必要な指示」がおろそかになる**
+### Core Problem
+As development progresses, `.github/copilot-instructions.md` becomes increasingly detailed.  
+→ Instructions become massive  
+→ LLM attention disperses  
+→ **"Instructions truly needed for current flow/state" get neglected**
 
-### 経験則
-- プロジェクト開始時: シンプルな指示 → Copilotは集中して効果的
-- 数週間後: 詳細な指示が10倍に → Copilotの反応が鈍くなる
-- 1ヶ月後: 指示書が肥大化 → 重要な規約が無視される
+### Empirical Evidence
+- Project start: Simple instructions → Copilot focused and effective
+- After weeks: Instructions 10x detailed → Copilot response becomes sluggish
+- After month: Instructions bloated → Important conventions ignored
 
-### 目指すもの
-**「プロジェクト全体の豊富な知識」と「LLMへの最適な情報提供」を両立**
-
----
-
-## 2. エレベーターピッチ (What)
-
-GitHub Copilotを使う開発者向けの、  
-**LLMアテンション分散問題を解決する**MCPサーバです。
-
-このプロダクトは、**巨大な指示書データベース**から**文脈に応じて必要な指示だけを動的に生成**することで、  
-従来の「指示書肥大化→効果減少」問題を解決します。
-
-既存の静的な`.github/copilot-instructions.md`とは異なり、  
-**現在のToDo、開発フェーズ、編集ファイルから「今必要な指示」を自動抽出**します。
+### Goal
+**Balance "rich project-wide knowledge" with "optimal information provision to LLM"**
 
 ---
 
-## 3. パッケージデザイン (Package Design)
+## 2. Elevator Pitch (What)
+
+An MCP server for GitHub Copilot users that  
+**solves the LLM attention dispersion problem**.
+
+This product **dynamically generates only contextually necessary instructions** from a **huge instruction database**,  
+resolving the traditional "instruction bloat → reduced effectiveness" problem.
+
+Unlike existing static `.github/copilot-instructions.md`,  
+it **auto-extracts "instructions needed now" from current ToDos, development phase, and edited files**.
+
+---
+
+## 3. Package Design
 
 ```
 ┌─────────────────────────────────────────────┐
-│  .copilot-instructions/ (指示書データベース)  │
+│  .copilot-instructions/ (Instruction DB)    │
 │  ├─ architecture/                           │
 │  ├─ patterns/                               │
 │  ├─ conventions/                            │
 │  └─ phases/                                 │
-│     (Git管理、ブランチ戦略、レビュー可能)       │
+│     (Git-managed, branch strategy, review)  │
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
-│  MCPサーバ (文脈認識エンジン)                  │
-│  ├─ ToDo管理から現在の状況を把握              │
-│  ├─ Gitコミットハッシュで状態を紐付け          │
-│  ├─ スコアリングで関連指示を抽出              │
-│  └─ 競合検知・マージ機能                     │
+│  MCP Server (Context Recognition Engine)    │
+│  ├─ Understand current status from ToDos    │
+│  ├─ Link state with Git commit hashes       │
+│  ├─ Extract relevant instructions by score  │
+│  └─ Conflict detection & merge              │
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
-│  .github/copilot-instructions.md (動的生成)  │
-│  「今の流れに必要な指示だけ」                  │
-│  トークン効率最適化、アテンション集中           │
+│  .github/copilot-instructions.md (Dynamic)  │
+│  "Only instructions needed for current flow"│
+│  Token efficiency optimized, focused attention│
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
 │  GitHub Copilot (LLM)                       │
-│  集中したアテンションで高品質な提案            │
+│  High-quality suggestions with focused attention│
 └─────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. やらないことリスト (NOT List)
+## 4. NOT List
 
-### ❌ やらないこと
-1. **LLMの完全置き換え**: Copilotの補助ツールであり、独立したAIエージェントではない
-2. **自動コード生成**: コード生成自体はCopilotに任せ、「指示の最適化」に専念
-3. **リアルタイム監視**: ファイル変更を常時監視せず、MCPツール経由の明示的な更新のみ
-4. **クラウド連携**: すべてローカルで完結（プライバシー・セキュリティ）
-5. **複雑なAI分析**: シンプルなスコアリングアルゴリズムで十分
+### ❌ What We Don't Do
+1. **Complete LLM Replacement**: Supplementary tool for Copilot, not an independent AI agent
+2. **Automatic Code Generation**: Leave code generation to Copilot, focus on "instruction optimization"
+3. **Real-time Monitoring**: No constant file watching, only explicit updates via MCP tools
+4. **Cloud Integration**: Everything runs locally (privacy/security)
+5. **Complex AI Analysis**: Simple scoring algorithm is sufficient
 
-### ✅ やること
-1. **文脈に応じた動的フィルタリング**: ToDo/フェーズ/ファイルパスから関連指示を抽出
-2. **Git統合**: コミットハッシュとの紐付け、変更履歴管理
-3. **競合検知**: 外部変更の検出と安全なマージ
-4. **シンプルなAPI**: action引数でCRUD統一
-5. **ローカル完結**: すべての処理をローカルで実行
-
----
-
-## 5. 技術的な選択 (Technical Choices)
-
-### コア技術
-- **TypeScript**: 型安全性とVS Code統合
-- **MCP (Model Context Protocol)**: LLMとの標準的な通信プロトコル
-- **unified/remark**: Markdown ASTの操作
-- **Git CLI**: コミットハッシュ取得、状態管理
-
-### ストレージ
-- **ファイルベース**: `.copilot-instructions/` ディレクトリ（Git管理可能）
-- **JSON**: `.copilot-context/contexts.json`（構造化データ）
-- **Markdown**: 指示書の実体（人間可読）
-
-### デザインパターン
-- **Strategy Pattern**: 文脈ごとに異なるフィルタリング戦略
-- **Observer Pattern**: Git状態変化の検知
-- **Command Pattern**: CRUD操作の統一
+### ✅ What We Do
+1. **Context-based Dynamic Filtering**: Extract relevant instructions from ToDos/phase/file paths
+2. **Git Integration**: Link with commit hashes, manage change history
+3. **Conflict Detection**: Detect external changes and safe merging
+4. **Simple API**: Unified CRUD via action parameter
+5. **Local-only**: Execute all processing locally
 
 ---
 
-## 6. ご近所さんに会う (What Keeps Us Up at Night)
+## 5. Technical Choices
 
-### 最大のリスク: アテンション分散問題の再発
-**懸念**: 動的生成しても、結局フィルタリングが甘くて大量の指示が含まれてしまう
+### Core Technologies
+- **TypeScript**: Type safety and VS Code integration
+- **MCP (Model Context Protocol)**: Standard communication protocol with LLM
+- **unified/remark**: Markdown AST manipulation
+- **Git CLI**: Commit hash retrieval, state management
 
-**対策**:
-1. `maxSections` パラメータで強制的に上限設定
-2. スコアリング閾値の調整可能化
-3. トークン数の可視化（preview機能）
+### Storage
+- **File-based**: `.copilot-instructions/` directory (Git-manageable)
+- **JSON**: `.copilot-context/contexts.json` (structured data)
+- **Markdown**: Actual instructions (human-readable)
 
-### リスク: Git管理の複雑化
-**懸念**: ブランチ切り替えで指示書が混乱
-
-**対策**:
-1. コミットハッシュとの紐付けで「どの状態か」を明確化
-2. ブランチ固有の指示は `.copilot-instructions/branches/` で管理
-3. Git非管理でも動作（デグレードモード）
-
-### リスク: 過度な自動化
-**懸念**: LLMが勝手に指示を書き換えて制御不能に
-
-**対策**:
-1. **preview→apply の2段階フロー**（確認必須）
-2. すべての変更をGit履歴に記録
-3. ロールバック機能の実装
+### Design Patterns
+- **Strategy Pattern**: Different filtering strategies per context
+- **Observer Pattern**: Git state change detection
+- **Command Pattern**: Unified CRUD operations
 
 ---
 
-## 7. 解決策を描く (Solution Overview)
+## 6. What Keeps Us Up at Night
 
-### Phase 1: MVP ✅ 完了
-- 基本的なCRUD操作
-- Git統合（コミットハッシュ、ステータス、diff）
-- 競合検知とマーカー挿入
+### Major Risk: Attention Dispersion Problem Recurrence
+**Concern**: Even with dynamic generation, weak filtering results in too many instructions
 
-### Phase 2: 動的生成エンジン 🚧 次のステップ
+**Countermeasures**:
+1. Enforce upper limit with `maxSections` parameter
+2. Adjustable scoring threshold
+3. Token count visualization (preview feature)
+
+### Risk: Git Management Complexity
+**Concern**: Branch switching causes instruction confusion
+
+**Countermeasures**:
+1. Clarify "which state" via commit hash linkage
+2. Manage branch-specific instructions in `.copilot-instructions/branches/`
+3. Works without Git (degraded mode)
+
+### Risk: Excessive Automation
+**Concern**: LLM arbitrarily rewrites instructions, losing control
+
+**Countermeasures**:
+1. **Two-step flow: preview→apply** (confirmation required)
+2. Record all changes in Git history
+3. Implement rollback functionality
+
+---
+
+## 7. Solution Overview
+
+### Phase 1: MVP ✅ Completed
+- Basic CRUD operations
+- Git integration (commit hash, status, diff)
+- Conflict detection and marker insertion
+
+### Phase 2: Dynamic Generation Engine 🚧 Next Step
 ```typescript
-// 使用例
+// Usage example
 generate_instructions({
   action: "preview",
   context: {
-    currentTodos: ["API認証実装", "JWT検証"],
+    currentTodos: ["API authentication", "JWT validation"],
     activePhase: "development"
   }
 })
-// → 関連する指示だけを抽出
-// → トークン数を表示
-// → 確認後にapply
+// → Extract only relevant instructions
+// → Display token count
+// → Apply after confirmation
 ```
 
-### Phase 3: 高度な機能
-- ToDo管理ツールとの統合
-- ブランチ戦略との連携
-- 効果測定（指示の有効性分析）
+### Phase 3: Advanced Features
+- Integration with ToDo management tools
+- Branch strategy coordination
+- Effectiveness measurement (instruction validity analysis)
 
 ---
 
-## 8. 夜も眠れない問題リスト (Risks)
+## 8. Risk List
 
-| リスク | 影響度 | 対策 |
-|--------|--------|------|
-| フィルタリングが甘い | 高 | maxSections強制、preview機能 |
-| Git管理の複雑化 | 中 | コミットハッシュ紐付け、デグレードモード |
-| 過度な自動化 | 中 | 2段階フロー、ロールバック |
-| ToDo管理の複雑さ | 低 | 外部ツール連携は後回し、手動設定でも動作 |
-| パフォーマンス低下 | 低 | キャッシング、非同期処理 |
-
----
-
-## 9. 期間を見極める (Timeline)
-
-- **Phase 1 (MVP)**: ✅ 完了 (2週間)
-- **Phase 2 (動的生成)**: 🚧 実装中 (1-2週間見込み)
-- **Phase 3 (高度な機能)**: 未着手 (2-3週間見込み)
+| Risk | Impact | Countermeasure |
+|------|--------|----------------|
+| Weak filtering | High | Enforce maxSections, preview feature |
+| Git management complexity | Medium | Commit hash linkage, degraded mode |
+| Excessive automation | Medium | Two-step flow, rollback |
+| ToDo management complexity | Low | Defer external tool integration, works with manual settings |
+| Performance degradation | Low | Caching, async processing |
 
 ---
 
-## 10. トレードオフスライダー (Trade-offs)
+## 9. Timeline
+
+- **Phase 1 (MVP)**: ✅ Completed (2 weeks)
+- **Phase 2 (Dynamic Generation)**: 🚧 In progress (1-2 weeks estimated)
+- **Phase 3 (Advanced Features)**: Not started (2-3 weeks estimated)
+
+---
+
+## 10. Trade-off Slider
 
 ```
-シンプルさ    ████████░░  (8/10) ← 重視
-機能の豊富さ  ██████░░░░  (6/10)
-パフォーマンス ███████░░░  (7/10)
-柔軟性       ████████░░  (8/10) ← 重視
-完璧さ       ██████░░░░  (6/10)
+Simplicity      ████████░░  (8/10) ← Prioritized
+Feature Rich    ██████░░░░  (6/10)
+Performance     ███████░░░  (7/10)
+Flexibility     ████████░░  (8/10) ← Prioritized
+Perfection      ██████░░░░  (6/10)
 ```
 
-**優先順位**:
-1. **シンプルさ**: 複雑な機能より、理解しやすい仕組み
-2. **柔軟性**: 様々な開発スタイルに対応
-3. **パフォーマンス**: 瞬時に動作
-4. **機能の豊富さ**: 必要最小限の機能セット
-5. **完璧さ**: 80%の品質で十分（完璧主義は避ける）
+**Priorities**:
+1. **Simplicity**: Understandable mechanism over complex features
+2. **Flexibility**: Support various development styles
+3. **Performance**: Instant operation
+4. **Feature Rich**: Minimal necessary feature set
+5. **Perfection**: 80% quality is sufficient (avoid perfectionism)
 
 ---
 
-## まとめ
+## Summary
 
-このプロジェクトは、**「指示書肥大化によるアテンション分散」という本質的な問題**を、**「大きな構造を持ちつつ文脈に応じて絞る」**という明確な解決策で取り組んでいます。
+This project addresses **the fundamental problem of "attention dispersion due to instruction bloat"** with a clear solution: **"maintain large structure while filtering by context."**
 
-Git統合により変更履歴・レビュー・ロールバックが可能で、実用的な開発ワークフローに組み込めます。
+With Git integration, change history, review, and rollback are possible, integrating into practical development workflows.
 
-次のステップはPhase 2（動的生成エンジン）の実装です。
+The next step is implementing Phase 2 (Dynamic Generation Engine).
