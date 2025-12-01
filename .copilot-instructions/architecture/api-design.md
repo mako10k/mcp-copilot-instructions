@@ -1,9 +1,13 @@
 ---
 category: architecture
-tags: [api, rest, design]
+tags:
+  - api
+  - rest
+  - design
 priority: high
 required: false
-phases: [development]
+phases:
+  - development
 ---
 
 # API設計の原則

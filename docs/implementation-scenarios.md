@@ -1595,3 +1595,134 @@ feedback({ action: "list", filter: "criticalFeedback" })
 - [x] スコアリングアルゴリズムとの連携確認
 - [x] テスト（10シナリオすべて成功）
 
+
+---
+
+## Scenario 11: 優先フラグのソフト・ハードリミット（Phase 3 - 改善）
+
+### 背景
+
+PBI-004でfeedbackツールを実装後、ユーザーから重要な指摘:
+- 「優先ばかり増えると、優先以外のコンテキストに必要な情報が圧迫される」
+- 無制限に優先フラグを付けると、動的生成の目的「今の流れに必要な指示だけ」が損なわれる
+
+### 設計方針
+
+**ソフトリミット（警告）とハードリミット（エラー）の2段階制限**
+
+```json
+{
+  "limits": {
+    "priorityFlags": {
+      "criticalFeedback": {
+        "softLimit": 2,  // 警告表示
+        "hardLimit": 3   // 追加不可
+      },
+      "copilotEssential": {
+        "softLimit": 3,
+        "hardLimit": 4
+      }
+    }
+  }
+}
+```
+
+- **ソフトリミット**: 次に追加するとハードリミットに達する数
+- **ハードリミット**: これ以上追加できない上限
+
+### 実装内容
+
+#### 1. scoring-rules.jsonの拡張
+
+`limits.priorityFlags`セクションを追加。
+
+#### 2. feedback.tsの機能強化
+
+**add時の挙動:**
+```typescript
+// 現在のフラグ数をカウント
+const currentCount = (await listFeedbacks(flagType)).length;
+
+// ハードリミットチェック
+if (currentCount >= hardLimit) {
+  return {
+    success: false,
+    error: "HARD_LIMIT_REACHED",
+    message: "❌ ハードリミット到達",
+    existingFlags: [...],
+    suggestion: "既存のフラグを削除してから追加してください"
+  };
+}
+
+// ソフトリミット警告
+if (currentCount >= softLimit) {
+  warning = "⚠️ ソフトリミット到達: 次回追加時にハードリミットに達します";
+  // 既存フラグ一覧と推奨アクションを表示
+}
+```
+
+**list時の統計情報:**
+```json
+{
+  "summary": {
+    "criticalFeedback": {
+      "count": 2,
+      "softLimit": 2,
+      "hardLimit": 3,
+      "status": "warning"  // ok | warning | error
+    },
+    "warnings": ["criticalFeedback: 2/3 ⚠️ ソフトリミット到達"]
+  }
+}
+```
+
+### テスト結果
+
+**Test 11-14**: リミット機能のテスト
+
+```
+Test 11: 2個追加でソフトリミット到達
+→ status: "warning", warnings配列に警告メッセージ
+
+Test 12: 3個目追加（ソフトリミット超過）
+→ success: true, warningフィールドに詳細な警告
+  - 既存フラグ一覧
+  - 推奨アクション（見直し、削除、統合）
+
+Test 13: 4個目追加（ハードリミット超過）
+→ success: false, error: "HARD_LIMIT_REACHED"
+  - 既存フラグ一覧と理由
+  - 削除を促すメッセージ
+
+Test 14: クリーンアップ成功
+```
+
+### 効果
+
+1. **優先度のインフレ防止**
+   - ハードリミットで物理的に制限
+   - ソフトリミットで事前警告
+
+2. **ユーザビリティ向上**
+   - 警告時に既存フラグ一覧を表示
+   - 具体的な推奨アクションを提示
+   - エラー時も理由と解決策を明示
+
+3. **設計哲学の保持**
+   - "今の流れに必要な指示だけ"を維持
+   - コンテキスト依存の動的生成を圧迫しない
+   - 優先フラグは厳選されたものだけに
+
+### 設計判断
+
+- **criticalFeedback**: ハード3個まで（人間の強い指摘は少数精鋭）
+- **copilotEssential**: ハード4個まで（LLMの判断は少し緩め）
+- **ソフトはハードの-1**: 次に失敗することを事前警告
+- **段階的な情報提供**: ok → warning（一覧） → error（一覧+解決策）
+
+### 今後の拡張可能性
+
+- マージ提案機能（suggest-mergeアクション）
+- 優先度の自動降格（一定期間使われないフラグの削除提案）
+- カテゴリ別のリミット設定
+

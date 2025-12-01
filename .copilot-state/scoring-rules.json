@@ -14,7 +14,17 @@
   "limits": {
     "maxSections": 10,
     "maxItemsPerSection": 4,
-    "scoreThreshold": 3
+    "scoreThreshold": 3,
+    "priorityFlags": {
+      "criticalFeedback": {
+        "softLimit": 2,
+        "hardLimit": 3
+      },
+      "copilotEssential": {
+        "softLimit": 3,
+        "hardLimit": 4
+      }
+    }
   },
   "metadata": {
     "version": "1.0.0",

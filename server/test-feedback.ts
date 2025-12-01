@@ -87,6 +87,67 @@ async function main() {
   console.log(listResult6);
   console.log('\n---\n');
 
+  // Test 11: ソフトリミットテスト（criticalFeedback）
+  console.log('Test 11: ソフトリミットテスト - criticalFeedback 2個追加');
+  await feedback({
+    action: 'add',
+    filePath: 'conventions/typescript.md',
+    flagType: 'criticalFeedback',
+    reason: 'テスト1',
+  });
+  await feedback({
+    action: 'add',
+    filePath: 'patterns/error-handling.md',
+    flagType: 'criticalFeedback',
+    reason: 'テスト2',
+  });
+  const listResult7 = await feedback({ action: 'list' });
+  console.log(listResult7);
+  console.log('\n---\n');
+
+  // Test 12: ソフトリミット到達時の警告確認
+  console.log('Test 12: 3個目追加でソフトリミット警告表示');
+  const addResult3 = await feedback({
+    action: 'add',
+    filePath: 'architecture/api-design.md',
+    flagType: 'criticalFeedback',
+    reason: 'テスト3（ソフトリミット到達）',
+  });
+  console.log(addResult3);
+  console.log('\n---\n');
+
+  // Test 13: ハードリミット到達時のエラー確認
+  console.log('Test 13: 4個目追加でハードリミットエラー');
+  const addResult4 = await feedback({
+    action: 'add',
+    filePath: 'patterns/testing.md',
+    flagType: 'criticalFeedback',
+    reason: 'テスト4（ハードリミット超過）',
+  });
+  console.log(addResult4);
+  console.log('\n---\n');
+
+  // Test 14: クリーンアップ
+  console.log('Test 14: テストデータをクリーンアップ');
+  await feedback({
+    action: 'remove',
+    filePath: 'conventions/typescript.md',
+    flagType: 'criticalFeedback',
+  });
+  await feedback({
+    action: 'remove',
+    filePath: 'patterns/error-handling.md',
+    flagType: 'criticalFeedback',
+  });
+  await feedback({
+    action: 'remove',
+    filePath: 'architecture/api-design.md',
+    flagType: 'criticalFeedback',
+  });
+  const listResult8 = await feedback({ action: 'list' });
+  console.log(listResult8);
+  console.log('\n---\n');
+
   console.log('すべてのテストが完了しました。');
 }
 
