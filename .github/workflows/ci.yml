@@ -55,8 +55,10 @@ jobs:
         run: |
           cd server
           test -f dist/index.js
-          test -d dist/tools
-          test -d dist/utils
+          test -f dist/src/index.js
+          test -d dist/src/tools
+          test -d dist/src/utils
+          test -d dist/tests
 
   # test:
   #   runs-on: ubuntu-latest
