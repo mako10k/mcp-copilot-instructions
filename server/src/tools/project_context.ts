@@ -62,7 +62,7 @@ export async function projectContext(args: ProjectContextArgs) {
       return `プロジェクト文脈を作成しました。\nID: ${newContext.id}\nタイトル: ${newContext.title}`;
     }
     case 'read': {
-      // フィルタが指定されている場合
+      // If filters are specified
       let contexts;
       if (
         args.category ||
@@ -80,14 +80,14 @@ export async function projectContext(args: ProjectContextArgs) {
           return 'フィルタ条件に一致するプロジェクト文脈が見つかりませんでした。';
         }
       } else {
-        // フィルタなしの場合は全件取得
+        // No filters - fetch all
         contexts = await loadContexts();
         if (contexts.length === 0) {
           return 'プロジェクト文脈が登録されていません。';
         }
       }
 
-      // 表示形式の選択
+      // Select display format
       const format = args.format || 'summary';
       if (format === 'summary') {
         const header = args.category || args.tags
@@ -101,7 +101,7 @@ export async function projectContext(args: ProjectContextArgs) {
           .join('\n\n');
         return `${header}\n\n${summary}`;
       } else {
-        // full形式（従来のJSON表示）
+        // full format (legacy JSON display)
         const header = args.category || args.tags
           ? `フィルタ結果（${contexts.length}件）:`
           : `登録済みプロジェクト文脈（${contexts.length}件）:`;

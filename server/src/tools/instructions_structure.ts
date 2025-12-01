@@ -54,7 +54,7 @@ type InstructionsStructureArgs =
   | InsertStructureArgs;
 
 export async function instructionsStructure(args: InstructionsStructureArgs) {
-  // 機能制限モードのチェック（read と detect-conflicts は許可）
+  // Check for restricted mode (allow read and detect-conflicts)
   if (args.action !== 'read' && args.action !== 'detect-conflicts') {
     const restricted = await isRestrictedMode();
     if (restricted) {
@@ -76,7 +76,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
       
       let result = '';
       
-      // Git情報を含める場合
+      // If including Git information
       if (args.includeGitInfo) {
         const fileState = await readInstructionsFileWithState();
         if (fileState) {
@@ -112,7 +112,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
     case 'update': {
       try {
-        // 排他制御を使用してセクション更新
+        // Use locking for section update
         const result = await withLock(async () => {
           return await updateSection(args.heading, args.content);
         });
@@ -129,7 +129,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         
-        // ロック取得失敗の場合は分かりやすいメッセージ
+        // Clear message for lock acquisition failure
         if (message.includes('Failed to acquire lock')) {
           return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
         }
@@ -159,7 +159,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
     case 'resolve-conflict': {
       try {
-        // 排他制御を使用して競合解決
+        // Use locking for conflict resolution
         const result = await withLock(async () => {
           return await resolveConflict(
             args.heading,
@@ -188,7 +188,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
     case 'delete': {
       try {
-        // 排他制御を使用してセクション削除
+        // Use locking for section deletion
         const result = await withLock(async () => {
           return await deleteSection(args.heading);
         });
@@ -211,7 +211,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
     case 'insert': {
       try {
-        // 排他制御を使用してセクション挿入
+        // Use locking for section insertion
         const result = await withLock(async () => {
           return await insertSection(
             args.heading,

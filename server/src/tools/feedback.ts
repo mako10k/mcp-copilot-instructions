@@ -30,7 +30,7 @@ interface FeedbackEntry {
 }
 
 /**
- * 指示ファイルのフロントマターを更新
+ * Update instruction file frontmatter
  */
 async function updateInstructionFrontmatter(
   filePath: string,
@@ -41,11 +41,11 @@ async function updateInstructionFrontmatter(
   const workspaceRoot = path.resolve(__dirname, '../../../');
   const fullPath = path.join(workspaceRoot, '.copilot-instructions', filePath);
   
-  // ファイルを読み込む
+  // Read file
   const content = await fs.readFile(fullPath, 'utf-8');
   const parsed = matter(content);
   
-  // フロントマターを更新
+  // Update frontmatter
   if (value) {
     parsed.data[flagType] = true;
     if (reason) {
@@ -56,13 +56,13 @@ async function updateInstructionFrontmatter(
     delete parsed.data[`${flagType}Reason`];
   }
   
-  // ファイルに書き戻す
+  // Write back to file
   const updated = matter.stringify(parsed.content, parsed.data);
   await fs.writeFile(fullPath, updated, 'utf-8');
 }
 
 /**
- * スコアリングルールを読み込み
+ * Load scoring rules
  */
 async function loadScoringRules(): Promise<ScoringRules> {
   const workspaceRoot = path.resolve(__dirname, '../../../');
@@ -72,7 +72,7 @@ async function loadScoringRules(): Promise<ScoringRules> {
 }
 
 /**
- * すべての指示ファイルをスキャンしてフィードバック情報を取得
+ * Scan all instruction files and retrieve feedback information
  */
 async function listFeedbacks(filter: 'criticalFeedback' | 'copilotEssential' | 'all'): Promise<FeedbackEntry[]> {
   const workspaceRoot = path.resolve(__dirname, '../../../');
@@ -97,7 +97,7 @@ async function listFeedbacks(filter: 'criticalFeedback' | 'copilotEssential' | '
           const hasCritical = parsed.data.criticalFeedback === true;
           const hasEssential = parsed.data.copilotEssential === true;
           
-          // フィルタリング
+          // Filtering
           if (filter === 'all' || 
               (filter === 'criticalFeedback' && hasCritical) ||
               (filter === 'copilotEssential' && hasEssential)) {
@@ -124,7 +124,7 @@ async function listFeedbacks(filter: 'criticalFeedback' | 'copilotEssential' | '
 }
 
 /**
- * feedbackツール実装
+ * feedback tool implementation
  */
 export async function feedback(args: FeedbackArgs): Promise<string> {
   const action = args.action;
@@ -134,7 +134,7 @@ export async function feedback(args: FeedbackArgs): Promise<string> {
     const feedbacks = await listFeedbacks(filter);
     const rules = await loadScoringRules();
     
-    // 統計情報を計算
+    // Calculate statistics
     const criticalCount = feedbacks.filter(f => f.criticalFeedback).length;
     const essentialCount = feedbacks.filter(f => f.copilotEssential).length;
     
@@ -191,13 +191,13 @@ export async function feedback(args: FeedbackArgs): Promise<string> {
       }, null, 2);
     }
     
-    // 現在のフラグ数をチェック
+    // Check current flag count
     const currentFeedbacks = await listFeedbacks(args.flagType);
     const currentCount = currentFeedbacks.length;
     const rules = await loadScoringRules();
     const limits = rules.limits.priorityFlags[args.flagType];
     
-    // ハードリミットチェック
+    // Hard limit check
     if (currentCount >= limits.hardLimit) {
       const existingList = currentFeedbacks.map(f => 
         `  - ${f.filePath}${f.reason ? ` (${f.reason})` : ''}`
@@ -217,7 +217,7 @@ export async function feedback(args: FeedbackArgs): Promise<string> {
       }, null, 2);
     }
     
-    // ソフトリミット警告
+    // Soft limit warning
     let warning: string | undefined;
     if (currentCount >= limits.softLimit) {
       const existingList = currentFeedbacks.map(f => 

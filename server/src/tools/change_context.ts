@@ -25,7 +25,7 @@ interface ChangeContextArgs {
 }
 
 /**
- * 現在のコンテキストを読み込む
+ * Load current context
  */
 async function loadContext(): Promise<DevelopmentContext> {
   const workspaceRoot = path.resolve(__dirname, '../../../');
@@ -35,7 +35,7 @@ async function loadContext(): Promise<DevelopmentContext> {
     const content = await fs.readFile(contextPath, 'utf-8');
     return JSON.parse(content);
   } catch {
-    // デフォルト値
+    // Default values
     return {
       phase: 'development',
       focus: [],
@@ -46,7 +46,7 @@ async function loadContext(): Promise<DevelopmentContext> {
 }
 
 /**
- * コンテキストを保存
+ * Save context
  */
 async function saveContext(context: DevelopmentContext): Promise<void> {
   const workspaceRoot = path.resolve(__dirname, '../../../');
@@ -56,12 +56,12 @@ async function saveContext(context: DevelopmentContext): Promise<void> {
 }
 
 /**
- * change_context ツール実装
+ * change_context tool implementation
  */
 export async function changeContext(args: ChangeContextArgs): Promise<string> {
   const action = args.action;
   
-  // 機能制限モードのチェック（read, list-history, show-diff, cleanup-history は許可）
+  // Check for restricted mode (allow read, list-history, show-diff, cleanup-history)
   const readOnlyActions = ['read', 'list-history', 'show-diff', 'cleanup-history'];
   if (!readOnlyActions.includes(action)) {
     const restricted = await isRestrictedMode();
@@ -111,7 +111,7 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
     
     await saveContext(newContext);
     
-    // autoRegenerate がtrueの場合（デフォルト）、自動的に指示書を再生成
+    // If autoRegenerate is true (default), automatically regenerate instructions
     const autoRegenerate = args.autoRegenerate !== false;
     let regenerated;
     
@@ -152,8 +152,8 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
   }
   
   if (action === 'show-diff') {
-    const fromTimestamp = args.from ?? 1;  // デフォルト: 1つ前
-    const toTimestamp = args.to ?? 0;      // デフォルト: 最新
+    const fromTimestamp = args.from ?? 1;  // Default: previous one
+    const toTimestamp = args.to ?? 0;      // Default: latest
     
     const fromEntry = await getHistoryByTimestamp(fromTimestamp);
     const toEntry = await getHistoryByTimestamp(toTimestamp);
@@ -194,10 +194,10 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
       }, null, 2);
     }
     
-    // コンテキストを復元
+    // Restore context
     await saveContext(historyEntry.context);
     
-    // .github/copilot-instructions.md を復元
+    // Restore .github/copilot-instructions.md
     const workspaceRoot = path.resolve(__dirname, '../../../');
     const outputPath = path.join(workspaceRoot, '.github/copilot-instructions.md');
     await fs.writeFile(outputPath, historyEntry.generatedContent, 'utf-8');
