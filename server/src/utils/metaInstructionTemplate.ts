@@ -12,7 +12,6 @@ import { DevelopmentContext } from './generateInstructions.js';
 /**
  * Generate meta-instruction section
  * 
- * @param context Development state
  * @returns Meta-instruction Markdown string
  */
 export function generateMetaInstruction(): string {
@@ -178,7 +177,7 @@ export function generateContextSpecificGuidance(context: DevelopmentContext): st
  * @returns Complete meta-instruction Markdown string
  */
 export function generateFullMetaInstruction(context: DevelopmentContext): string {
-  const baseInstruction = generateMetaInstruction(context);
+  const baseInstruction = generateMetaInstruction();
   const contextSpecificGuidance = generateContextSpecificGuidance(context);
   
   if (contextSpecificGuidance) {
