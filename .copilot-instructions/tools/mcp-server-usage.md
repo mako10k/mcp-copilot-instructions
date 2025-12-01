@@ -6,46 +6,46 @@ required: true
 phases: [development, refactoring, testing, debugging, documentation]
 ---
 
-# MCP Copilot Instructions Server の使い方
+# MCP Copilot Instructions Server Usage Guide
 
-## 基本コンセプト
+## Basic Concept
 
-このMCPサーバは、**LLMのアテンション分散問題を解決**するために、巨大な指示書データベースから**今必要な指示だけを動的に抽出**します。
+This MCP server **solves the LLM attention dispersion problem** by **dynamically extracting only the instructions needed right now** from a huge instruction database.
 
-## 主要ツール
+## Main Tools
 
-### `change_context` - 開発文脈の変更
+### `change_context` - Change Development Context
 
-現在の開発フェーズや焦点を変更すると、自動的に最適な指示書が生成されます。
+When you change the current development phase or focus, optimal instructions are automatically generated.
 
 ```typescript
-// 使用例: 開発フェーズに移行
+// Usage example: Transition to development phase
 change_context({
   action: "update",
   state: {
     phase: "development",
-    focus: ["API認証", "JWT"],
+    focus: ["API Authentication", "JWT"],
     priority: "high"
   }
 })
 ```
 
-### 利用可能なphase
+### Available Phases
 
-- `development`: 新機能開発
-- `refactoring`: コードリファクタリング
-- `testing`: テスト作成・修正
-- `debugging`: バグ修正
-- `documentation`: ドキュメント作成
+- `development`: New feature development
+- `refactoring`: Code refactoring
+- `testing`: Test creation and modification
+- `debugging`: Bug fixing
+- `documentation`: Documentation creation
 
-## 動的指示書生成の仕組み
+## How Dynamic Instruction Generation Works
 
-1. **change_context実行**: 開発文脈を設定
-2. **自動スコアリング**: 現在のphase/focusから関連指示を計算
-3. **指示書生成**: 必須指示 + 関連指示（最大10セクション）を抽出
-4. **LLMが集中**: 今必要な指示だけでアテンションを集中
+1. **Execute change_context**: Set development context
+2. **Automatic Scoring**: Calculate related instructions from current phase/focus
+3. **Generate Instructions**: Extract required instructions + related instructions (max 10 sections)
+4. **LLM Focuses**: Concentrate attention on only necessary instructions
 
-## 必須指示（常に含まれる）
+## Required Instructions (Always Included)
 
-- この使い方ガイド（tools/mcp-server-usage.md）
-- TypeScript規約（conventions/typescript.md）
+- This usage guide (tools/mcp-server-usage.md)
+- TypeScript conventions (conventions/typescript.md)

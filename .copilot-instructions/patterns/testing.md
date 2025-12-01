@@ -6,23 +6,23 @@ required: false
 phases: [testing, development]
 ---
 
-# テストパターン
+# Testing Patterns
 
-## ユニットテストの基本
+## Unit Test Basics
 
 ```typescript
 describe('calculateSum', () => {
-  it('正の数の合計を計算', () => {
+  it('calculates sum of positive numbers', () => {
     expect(calculateSum(2, 3)).toBe(5);
   });
 
-  it('負の数を含む合計を計算', () => {
+  it('calculates sum including negative numbers', () => {
     expect(calculateSum(-2, 3)).toBe(1);
   });
 });
 ```
 
-## モック
+## Mocking
 
 ```typescript
 const mockFn = jest.fn();
@@ -30,10 +30,10 @@ mockFn.mockReturnValue(42);
 expect(mockFn()).toBe(42);
 ```
 
-## 非同期テスト
+## Async Tests
 
 ```typescript
-it('非同期処理のテスト', async () => {
+it('test async processing', async () => {
   const data = await fetchData();
   expect(data).toBeDefined();
 });

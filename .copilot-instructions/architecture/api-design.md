@@ -10,25 +10,25 @@ phases:
   - development
 ---
 
-# API設計の原則
+# API Design Principles
 
-## RESTful設計
+## RESTful Design
 
-- リソース指向のURL設計
-- 適切なHTTPメソッド使用（GET/POST/PUT/DELETE）
-- ステータスコードの正しい使用
+- Resource-oriented URL design
+- Proper HTTP method usage (GET/POST/PUT/DELETE)
+- Correct use of status codes
 
-## エンドポイント設計
+## Endpoint Design
 
 ```
-GET    /api/users       # ユーザー一覧
-GET    /api/users/:id   # ユーザー詳細
-POST   /api/users       # ユーザー作成
-PUT    /api/users/:id   # ユーザー更新
-DELETE /api/users/:id   # ユーザー削除
+GET    /api/users       # List users
+GET    /api/users/:id   # Get user details
+POST   /api/users       # Create user
+PUT    /api/users/:id   # Update user
+DELETE /api/users/:id   # Delete user
 ```
 
-## レスポンス形式
+## Response Format
 
 ```typescript
 {

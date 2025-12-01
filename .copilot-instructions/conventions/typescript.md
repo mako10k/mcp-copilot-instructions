@@ -13,34 +13,34 @@ phases:
   - debugging
 ---
 
-# TypeScript コーディング規約
+# TypeScript Coding Conventions
 
-## 型安全性
+## Type Safety
 
-- すべての関数に明示的な戻り値の型を指定
-- `any`型の使用は最小限に（やむを得ない場合のみ）
-- `unknown`型を活用して型安全性を保つ
+- Specify explicit return types for all functions
+- Minimize use of `any` type (only when unavoidable)
+- Utilize `unknown` type to maintain type safety
 
-## 命名規則
+## Naming Conventions
 
-- **変数/関数**: camelCase（例: `getUserData`, `totalCount`）
-- **型/インターフェース**: PascalCase（例: `UserProfile`, `ApiResponse`）
-- **定数**: UPPER_SNAKE_CASE（例: `MAX_RETRY_COUNT`）
+- **Variables/Functions**: camelCase (e.g., `getUserData`, `totalCount`)
+- **Types/Interfaces**: PascalCase (e.g., `UserProfile`, `ApiResponse`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_RETRY_COUNT`)
 
-## ファイル構成
+## File Structure
 
 ```typescript
-// インポート順序
-import { 標準ライブラリ } from 'node:fs';
-import { サードパーティ } from 'express';
-import { 内部モジュール } from '../utils';
+// Import order
+import { standardLibrary } from 'node:fs';
+import { thirdParty } from 'express';
+import { internalModule } from '../utils';
 
-// 型定義
+// Type definitions
 interface MyType { }
 
-// 定数
+// Constants
 const CONSTANT = 'value';
 
-// 関数
+// Functions
 export function myFunction(): ReturnType { }
 ```

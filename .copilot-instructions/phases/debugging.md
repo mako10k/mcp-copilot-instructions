@@ -6,18 +6,18 @@ required: false
 phases: [debugging]
 ---
 
-# デバッグフェーズの指示
+# Debugging Phase Instructions
 
-## デバッグの手順
+## Debugging Process
 
-1. **問題の再現**: 確実に再現できる状態を作る
-2. **仮説立案**: 原因の仮説を立てる
-3. **検証**: console.log やデバッガーで検証
-4. **修正**: 最小限の変更で修正
-5. **テスト追加**: 同じ問題が再発しないようテスト追加
+1. **Reproduce the Problem**: Create a state where the issue can be reliably reproduced
+2. **Form Hypothesis**: Develop hypotheses about the cause
+3. **Verify**: Verify using console.log or debugger
+4. **Fix**: Fix with minimal changes
+5. **Add Tests**: Add tests to prevent recurrence of the same issue
 
-## デバッグツール
+## Debugging Tools
 
-- `console.log()`: 変数の値を確認
-- `console.trace()`: スタックトレースを表示
-- VS Code デバッガー: ブレークポイント設定
+- `console.log()`: Check variable values
+- `console.trace()`: Display stack trace
+- VS Code Debugger: Set breakpoints

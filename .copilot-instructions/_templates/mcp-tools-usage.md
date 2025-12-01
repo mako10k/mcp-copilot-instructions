@@ -6,29 +6,29 @@ required: false
 phases: [development]
 ---
 
-# MCPツール利用テンプレート
+# MCP Tools Usage Template
 
-このファイルは、プロジェクトで本MCPサーバを使う際の基本テンプレートです。
+This file is the basic template for using this MCP server in projects.
 
-## プロジェクト固有の設定
+## Project-Specific Configuration
 
-プロジェクトの特性に応じて、以下のカテゴリをカスタマイズ:
+Customize the following categories according to project characteristics:
 
-- `architecture/`: プロジェクトのアーキテクチャパターン
-- `patterns/`: よく使う実装パターン
-- `conventions/`: チーム固有のコーディング規約
-- `phases/`: プロジェクト固有の開発フェーズ
+- `architecture/`: Project architecture patterns
+- `patterns/`: Commonly used implementation patterns
+- `conventions/`: Team-specific coding conventions
+- `phases/`: Project-specific development phases
 
-## フロントマター設定
+## Frontmatter Configuration
 
-各Markdownファイルには以下のフロントマターを追加:
+Add the following frontmatter to each Markdown file:
 
 ```yaml
 ---
-category: カテゴリ名
-tags: [タグ1, タグ2]
+category: CategoryName
+tags: [Tag1, Tag2]
 priority: high | medium | low
-required: true | false  # 常に含める場合はtrue
+required: true | false  # true to always include
 phases: [development, refactoring, ...]
 ---
 ```

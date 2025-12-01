@@ -11,9 +11,9 @@ phases:
   - debugging
 ---
 
-# エラーハンドリングパターン
+# Error Handling Patterns
 
-## Try-Catch の適切な使用
+## Proper Use of Try-Catch
 
 ```typescript
 async function fetchData(): Promise<Data> {
@@ -23,14 +23,14 @@ async function fetchData(): Promise<Data> {
   } catch (error) {
     if (error instanceof ApiError) {
       console.error('API Error:', error.message);
-      throw new CustomError('データ取得失敗', error);
+      throw new CustomError('Failed to fetch data', error);
     }
     throw error;
   }
 }
 ```
 
-## カスタムエラークラス
+## Custom Error Classes
 
 ```typescript
 class CustomError extends Error {

@@ -6,18 +6,18 @@ required: false
 phases: [refactoring]
 ---
 
-# リファクタリングフェーズの指示
+# Refactoring Phase Instructions
 
-## リファクタリングの原則
+## Refactoring Principles
 
-1. **テストを先に書く**: 既存機能を壊さないことを保証
-2. **小さなステップ**: 一度に一つの改善のみ
-3. **頻繁にコミット**: 各改善ごとにコミット
-4. **レビュー**: 変更の意図を明確に
+1. **Write Tests First**: Ensure existing functionality won't break
+2. **Small Steps**: Only one improvement at a time
+3. **Commit Frequently**: Commit after each improvement
+4. **Review**: Clarify the intent of changes
 
-## 重点ポイント
+## Key Points
 
-- 重複コードの削減（DRY原則）
-- 関数の分割（単一責任の原則）
-- 命名の改善（意図が伝わる名前）
-- 不要なコードの削除
+- Reduce code duplication (DRY principle)
+- Split functions (Single Responsibility Principle)
+- Improve naming (names that convey intent)
+- Remove unnecessary code

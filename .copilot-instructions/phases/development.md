@@ -6,18 +6,18 @@ required: false
 phases: [development]
 ---
 
-# 開発フェーズの指示
+# Development Phase Instructions
 
-## 新機能開発の流れ
+## New Feature Development Flow
 
-1. **要件確認**: 実装する機能の仕様を明確化
-2. **設計**: インターフェース・データ構造を設計
-3. **実装**: TDD（テスト駆動開発）で進める
-4. **テスト**: ユニットテスト・統合テストを追加
+1. **Requirements Confirmation**: Clarify specifications of features to implement
+2. **Design**: Design interfaces and data structures
+3. **Implementation**: Proceed with TDD (Test-Driven Development)
+4. **Testing**: Add unit tests and integration tests
 
-## 実装時の注意点
+## Implementation Considerations
 
-- 小さなコミットで頻繁にコミット
-- 型安全性を最優先
-- エラーハンドリングを忘れずに
-- ドキュメントコメント（JSDoc）を追加
+- Commit frequently with small commits
+- Prioritize type safety
+- Don't forget error handling
+- Add documentation comments (JSDoc)

@@ -6,16 +6,16 @@ required: false
 phases: [development, refactoring]
 ---
 
-# Git ワークフロー
+# Git Workflow
 
-## ブランチ戦略
+## Branching Strategy
 
-- `main`: 本番環境
-- `feature/xxx`: 新機能開発
-- `fix/xxx`: バグ修正
-- `refactor/xxx`: リファクタリング
+- `main`: Production environment
+- `feature/xxx`: New feature development
+- `fix/xxx`: Bug fixes
+- `refactor/xxx`: Refactoring
 
-## コミットメッセージ
+## Commit Messages
 
 ```
 <type>: <subject>
@@ -24,8 +24,8 @@ phases: [development, refactoring]
 ```
 
 ### Type
-- `feat`: 新機能
-- `fix`: バグ修正
-- `docs`: ドキュメント
-- `refactor`: リファクタリング
-- `test`: テスト追加
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation
+- `refactor`: Refactoring
+- `test`: Add tests
