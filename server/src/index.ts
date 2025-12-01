@@ -50,6 +50,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               enum: ['create', 'read'],
               description: 'アクション: create/read',
             },
+            category: {
+              type: 'string',
+              description: 'カテゴリ（createの場合必須）',
+            },
+            title: {
+              type: 'string',
+              description: 'タイトル（createの場合必須）',
+            },
+            description: {
+              type: 'string',
+              description: '説明（createの場合必須）',
+            },
+            priority: {
+              type: 'number',
+              description: '優先度（1-10、デフォルト5）',
+            },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'タグ配列',
+            },
           },
           required: ['action'],
         },
@@ -93,7 +114,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
       case 'project_context': {
-        const result = await projectContext({ action: args.action as string });
+        const result = await projectContext(args as any);
         return {
           content: [{ type: 'text', text: result }],
         };
