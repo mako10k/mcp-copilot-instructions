@@ -86,6 +86,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               enum: ['read', 'update'],
               description: 'アクション: read/update',
             },
+            heading: {
+              type: 'string',
+              description: 'セクション見出し（updateの場合必須）',
+            },
+            content: {
+              type: 'string',
+              description: 'セクション内容（updateの場合必須）',
+            },
           },
           required: ['action'],
         },
@@ -120,9 +128,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
       case 'instructions_structure': {
-        const result = await instructionsStructure({
-          action: args.action as string,
-        });
+        const result = await instructionsStructure(args as any);
         return {
           content: [{ type: 'text', text: result }],
         };
