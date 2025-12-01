@@ -4,7 +4,10 @@
 
 import { changeContext } from '../../src/tools/change_context.js';
 import { createLogger } from '../helpers/test-logger.js';
-import { createTestContext, verifyInstructionsGenerated } from '../helpers/test-setup.js';
+import {
+  createTestContext,
+  verifyInstructionsGenerated,
+} from '../helpers/test-setup.js';
 
 export async function testChangeContext(): Promise<void> {
   const logger = createLogger('Change Context Tool');
@@ -56,7 +59,10 @@ export async function testChangeContext(): Promise<void> {
 
     // Step 5: Check history
     logger.step(5, 'List change history');
-    const historyResult = await changeContext({ action: 'list-history', limit: 5 });
+    const historyResult = await changeContext({
+      action: 'list-history',
+      limit: 5,
+    });
     logger.info(historyResult);
 
     // Step 6: Reset to default

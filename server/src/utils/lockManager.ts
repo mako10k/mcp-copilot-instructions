@@ -1,5 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getWorkspaceRoot } from './pathUtils.js';
 
 /**
  * Lock information
@@ -18,7 +19,7 @@ const RETRY_INTERVAL_MS = 100; // 100ms
  * Get lock file path
  */
 function getLockFilePath(): string {
-  const workspaceRoot = path.resolve(__dirname, '../../../');
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
   return path.join(workspaceRoot, LOCK_FILE);
 }
 
@@ -34,19 +35,24 @@ function generateSessionId(): string {
  * @param timeoutMs Timeout duration (milliseconds)
  * @returns sessionId on success, null on failure
  */
-export async function acquireLock(timeoutMs: number = LOCK_TIMEOUT_MS): Promise<string | null> {
+export async function acquireLock(
+  timeoutMs: number = LOCK_TIMEOUT_MS,
+): Promise<string | null> {
   const sessionId = generateSessionId();
   const lockPath = getLockFilePath();
   const startTime = Date.now();
-  
+
   // Create directory if it doesn't exist
   await fs.mkdir(path.dirname(lockPath), { recursive: true });
-  
+
   while (Date.now() - startTime < timeoutMs) {
     try {
       // Check if lock file exists
-      const exists = await fs.access(lockPath).then(() => true).catch(() => false);
-      
+      const exists = await fs
+        .access(lockPath)
+        .then(() => true)
+        .catch(() => false);
+
       if (!exists) {
         // No lock file, create and acquire successfully
         const lockInfo: LockInfo = {
@@ -54,36 +60,39 @@ export async function acquireLock(timeoutMs: number = LOCK_TIMEOUT_MS): Promise<
           acquiredAt: Date.now(),
           pid: process.pid,
         };
-        await fs.writeFile(lockPath, JSON.stringify(lockInfo, null, 2), { flag: 'wx' });
+        await fs.writeFile(lockPath, JSON.stringify(lockInfo, null, 2), {
+          flag: 'wx',
+        });
         return sessionId;
       }
-      
+
       // ロックファイルが存在する場合、古いロックかチェック
       const content = await fs.readFile(lockPath, 'utf-8');
       const lockInfo: LockInfo = JSON.parse(content);
-      
+
       // タイムアウト時間を超えた古いロックは削除
       if (Date.now() - lockInfo.acquiredAt > LOCK_TIMEOUT_MS * 2) {
-        console.warn(`Stale lock detected (session: ${lockInfo.sessionId}, age: ${Date.now() - lockInfo.acquiredAt}ms). Removing...`);
+        console.warn(
+          `Stale lock detected (session: ${lockInfo.sessionId}, age: ${Date.now() - lockInfo.acquiredAt}ms). Removing...`,
+        );
         await fs.unlink(lockPath);
         continue; // 再試行
       }
-      
+
       // ロックが取得できないので少し待つ
-      await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
-      
+      await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
     } catch (error: any) {
       // EEXIST: ファイル作成の競合（他のプロセスが先に作成）→ 再試行
       if (error.code === 'EEXIST') {
-        await new Promise(resolve => setTimeout(resolve, RETRY_INTERVAL_MS));
+        await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL_MS));
         continue;
       }
-      
+
       // その他のエラーは再スロー
       throw error;
     }
   }
-  
+
   // タイムアウト
   return null;
 }
@@ -94,17 +103,19 @@ export async function acquireLock(timeoutMs: number = LOCK_TIMEOUT_MS): Promise<
  */
 export async function releaseLock(sessionId: string): Promise<void> {
   const lockPath = getLockFilePath();
-  
+
   try {
     // ロックファイルの内容を確認
     const content = await fs.readFile(lockPath, 'utf-8');
     const lockInfo: LockInfo = JSON.parse(content);
-    
+
     // 自分のセッションIDと一致する場合のみ削除
     if (lockInfo.sessionId === sessionId) {
       await fs.unlink(lockPath);
     } else {
-      console.warn(`Lock session mismatch. Expected: ${sessionId}, Found: ${lockInfo.sessionId}`);
+      console.warn(
+        `Lock session mismatch. Expected: ${sessionId}, Found: ${lockInfo.sessionId}`,
+      );
     }
   } catch (error: any) {
     // ファイルが既に無い場合は無視
@@ -121,14 +132,14 @@ export async function releaseLock(sessionId: string): Promise<void> {
  */
 export async function withLock<T>(
   fn: () => Promise<T>,
-  timeoutMs: number = LOCK_TIMEOUT_MS
+  timeoutMs: number = LOCK_TIMEOUT_MS,
 ): Promise<T> {
   const sessionId = await acquireLock(timeoutMs);
-  
+
   if (!sessionId) {
     throw new Error('Failed to acquire lock: timeout');
   }
-  
+
   try {
     return await fn();
   } finally {
@@ -141,7 +152,7 @@ export async function withLock<T>(
  */
 export async function getLockStatus(): Promise<LockInfo | null> {
   const lockPath = getLockFilePath();
-  
+
   try {
     const content = await fs.readFile(lockPath, 'utf-8');
     return JSON.parse(content);

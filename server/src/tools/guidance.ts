@@ -12,23 +12,27 @@ export async function guidance({ action }: { action: string }) {
       const content = await readInstructionsFile();
       let instructionsStatus: string;
       if (!content) {
-        instructionsStatus = 'Instructions not initialized. Please create .github/copilot-instructions.md.';
+        instructionsStatus =
+          'Instructions not initialized. Please create .github/copilot-instructions.md.';
       } else {
         const lines = content.split('\n');
         const preview = lines.slice(0, 10).join('\n');
         const totalLines = lines.length;
         instructionsStatus = `Instructions exist (${totalLines} lines total)\n\n[First 10 lines preview]\n${preview}\n\n...`;
       }
-      
+
       // Onboarding status
       const onboardingStatus = await getOnboardingStatus();
       let onboardingInfo = '\n\n【Onboarding Status】\n';
-      
+
       if (onboardingStatus.status === 'not_started') {
-        onboardingInfo += '⚠️  Not started: Analysis for existing project introduction is required.\n\n';
+        onboardingInfo +=
+          '⚠️  Not started: Analysis for existing project introduction is required.\n\n';
         onboardingInfo += '【Recommended Action】\n';
-        onboardingInfo += 'Run onboarding({ action: "analyze" }) to analyze existing instructions.\n';
-        onboardingInfo += 'For new projects, you can skip with onboarding({ action: "skip" }).';
+        onboardingInfo +=
+          'Run onboarding({ action: "analyze" }) to analyze existing instructions.\n';
+        onboardingInfo +=
+          'For new projects, you can skip with onboarding({ action: "skip" }).';
       } else {
         const statusLabels = {
           analyzed: 'Analyzed',
@@ -38,8 +42,10 @@ export async function guidance({ action }: { action: string }) {
           rejected: 'Rejected',
           skipped: 'Skipped',
         };
-        const statusLabel = statusLabels[onboardingStatus.status as keyof typeof statusLabels] || onboardingStatus.status;
-        
+        const statusLabel =
+          statusLabels[onboardingStatus.status as keyof typeof statusLabels] ||
+          onboardingStatus.status;
+
         onboardingInfo += `Status: ${statusLabel}\n`;
         if (onboardingStatus.pattern) {
           const patternLabels = {
@@ -50,27 +56,33 @@ export async function guidance({ action }: { action: string }) {
           };
           onboardingInfo += `Pattern: ${patternLabels[onboardingStatus.pattern]}\n`;
         }
-        
+
         if (onboardingStatus.restrictedMode) {
-          onboardingInfo += '\n🔒 Restricted Mode: Some write operations are restricted.\n';
+          onboardingInfo +=
+            '\n🔒 Restricted Mode: Some write operations are restricted.\n';
           onboardingInfo += '【Restricted Features】\n';
-          onboardingInfo += '- instructions_structure: update/delete/insert/resolve-conflict\n';
+          onboardingInfo +=
+            '- instructions_structure: update/delete/insert/resolve-conflict\n';
           onboardingInfo += '- change_context: update/reset/rollback\n\n';
           onboardingInfo += '【Available Features】\n';
-          onboardingInfo += '- guidance, project_context, feedback (all operations)\n';
-          onboardingInfo += '- instructions_structure: read/detect-conflicts (read-only)\n';
-          onboardingInfo += '- change_context: read/list-history/show-diff (read-only)\n\n';
+          onboardingInfo +=
+            '- guidance, project_context, feedback (all operations)\n';
+          onboardingInfo +=
+            '- instructions_structure: read/detect-conflicts (read-only)\n';
+          onboardingInfo +=
+            '- change_context: read/list-history/show-diff (read-only)\n\n';
           onboardingInfo += '【Unlock Restrictions】\n';
-          onboardingInfo += 'Check details with onboarding({ action: "status" }).';
+          onboardingInfo +=
+            'Check details with onboarding({ action: "status" }).';
         } else {
           onboardingInfo += '✓ Normal Mode: All features are available.';
         }
-        
+
         if (onboardingStatus.analyzedAt) {
           onboardingInfo += `\n\nAnalysis date: ${onboardingStatus.analyzedAt}`;
         }
       }
-      
+
       return instructionsStatus + onboardingInfo;
     }
     default:

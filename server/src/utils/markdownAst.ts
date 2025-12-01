@@ -4,16 +4,13 @@ import remarkStringify from 'remark-stringify';
 import { Root, Heading, Content } from 'mdast';
 import { toString } from 'mdast-util-to-string';
 import * as crypto from 'crypto';
-import {
-  readInstructionsFile,
-  writeInstructionsFile,
-} from './fileSystem.js';
+import { readInstructionsFile, writeInstructionsFile } from './fileSystem.js';
 
 export interface Section {
   level: number;
   heading: string;
   content: string;
-  contentHash?: string;  // セクション内容のハッシュ
+  contentHash?: string; // セクション内容のハッシュ
   startLine?: number;
   endLine?: number;
 }
@@ -114,7 +111,7 @@ export async function readInstructionsSections(): Promise<Section[]> {
 
 /**
  * セクションを追加または更新（競合マーカー方式）
- * 
+ *
  * @param heading セクション見出し
  * @param newContent 新しいセクション内容
  * @param expectedHash 期待されるセクションのハッシュ値（省略時は競合チェックなし）
@@ -124,16 +121,18 @@ export async function updateSection(
   heading: string,
   newContent: string,
   expectedHash?: string,
-  initialSnapshot?: string
+  initialSnapshot?: string,
 ): Promise<{ success: boolean; conflict?: string; autoMerged?: boolean }> {
   // 初期状態を読み込み（スナップショットがあればそれを使用）
-  const initialContent = initialSnapshot || await readInstructionsFile();
+  const initialContent = initialSnapshot || (await readInstructionsFile());
   if (!initialContent) {
     throw new Error('指示書ファイルが存在しません');
   }
 
   const initialSections = extractSections(parseMarkdown(initialContent));
-  const initialTargetSection = initialSections.find(s => s.heading === heading);
+  const initialTargetSection = initialSections.find(
+    (s) => s.heading === heading,
+  );
   const newContentHash = calculateHash(newContent.trim());
 
   // 内容が同じなら更新不要
@@ -142,18 +141,18 @@ export async function updateSection(
     if (initialHash === newContentHash) {
       return { success: true };
     }
-    
+
     // expectedHashが指定されている場合、競合チェック
     if (expectedHash && initialHash !== expectedHash) {
       // 外部変更を検出 - 競合マーカーを挿入
       return await insertConflictMarkersManually(
         heading,
         initialTargetSection.content.trim(),
-        newContent.trim()
-      ).then(result => ({
+        newContent.trim(),
+      ).then((result) => ({
         success: result.success,
         conflict: `競合を検出しました。セクション「${heading}」に外部変更があります。競合マーカーを挿入しました。`,
-        autoMerged: false
+        autoMerged: false,
       }));
     }
   }
@@ -162,7 +161,9 @@ export async function updateSection(
   const currentContent = await readInstructionsFile();
   if (currentContent && currentContent !== initialContent) {
     const currentSections = extractSections(parseMarkdown(currentContent));
-    const currentTargetSection = currentSections.find(s => s.heading === heading);
+    const currentTargetSection = currentSections.find(
+      (s) => s.heading === heading,
+    );
 
     if (initialTargetSection && currentTargetSection) {
       const initialHash = calculateHash(initialTargetSection.content.trim());
@@ -173,11 +174,11 @@ export async function updateSection(
         return await insertConflictMarkersManually(
           heading,
           currentTargetSection.content.trim(),
-          newContent.trim()
-        ).then(result => ({
+          newContent.trim(),
+        ).then((result) => ({
           success: result.success,
           conflict: `競合を検出しました。セクション「${heading}」に外部変更があります。競合マーカーを挿入しました。`,
-          autoMerged: false
+          autoMerged: false,
         }));
       }
     }
@@ -195,9 +196,10 @@ export async function updateSection(
     if (node.type === 'heading' && toString(node) === heading) {
       found = true;
       const nextHeadingIndex = ast.children.findIndex(
-        (n, idx) => idx > i && n.type === 'heading'
+        (n, idx) => idx > i && n.type === 'heading',
       );
-      const endIndex = nextHeadingIndex === -1 ? ast.children.length : nextHeadingIndex;
+      const endIndex =
+        nextHeadingIndex === -1 ? ast.children.length : nextHeadingIndex;
 
       const newAst = parseMarkdown(newContent);
       ast.children.splice(i + 1, endIndex - i - 1, ...newAst.children);
@@ -220,9 +222,9 @@ export async function updateSection(
   await writeInstructionsFile(updatedMarkdown);
 
   const autoMerged = currentContent !== initialContent;
-  return { 
-    success: true, 
-    autoMerged: autoMerged || undefined 
+  return {
+    success: true,
+    autoMerged: autoMerged || undefined,
   };
 }
 
@@ -233,7 +235,7 @@ export async function updateSection(
 export async function insertConflictMarkersManually(
   heading: string,
   headContent: string,
-  mcpContent: string
+  mcpContent: string,
 ): Promise<{ success: boolean; conflict?: string }> {
   const content = await readInstructionsFile();
   if (!content) {
@@ -241,23 +243,27 @@ export async function insertConflictMarkersManually(
   }
 
   const timestamp = new Date().toISOString();
-  
+
   // セクションの開始と終了を検出
   const headingPattern = new RegExp(`^## ${heading}$`, 'm');
   const match = content.match(headingPattern);
-  
+
   if (!match || match.index === undefined) {
-    return { success: false, conflict: `セクション「${heading}」が見つかりません` };
+    return {
+      success: false,
+      conflict: `セクション「${heading}」が見つかりません`,
+    };
   }
 
   const sectionStart = match.index + match[0].length;
-  
+
   // 次のセクション（##で始まる行）を探す
   const remainingContent = content.substring(sectionStart);
   const nextHeadingMatch = remainingContent.match(/\n## /);
-  const sectionEnd = nextHeadingMatch && nextHeadingMatch.index !== undefined
-    ? sectionStart + nextHeadingMatch.index 
-    : content.length;
+  const sectionEnd =
+    nextHeadingMatch && nextHeadingMatch.index !== undefined
+      ? sectionStart + nextHeadingMatch.index
+      : content.length;
 
   // 競合マーカーを挿入
   const conflictMarker = `
@@ -268,7 +274,7 @@ ${mcpContent.trim()}
 >>>>>>> MCP Update (Copilot)
 `;
 
-  const newContent = 
+  const newContent =
     content.substring(0, sectionStart) +
     conflictMarker +
     content.substring(sectionEnd);
@@ -277,7 +283,7 @@ ${mcpContent.trim()}
 
   return {
     success: true,
-    conflict: `競合マーカーを挿入しました。セクション「${heading}」`
+    conflict: `競合マーカーを挿入しました。セクション「${heading}」`,
   };
 }
 
@@ -287,7 +293,7 @@ ${mcpContent.trim()}
  */
 export async function updateSectionLegacy(
   heading: string,
-  newContent: string
+  newContent: string,
 ): Promise<void> {
   const content = await readInstructionsFile();
   if (!content) {
@@ -302,9 +308,10 @@ export async function updateSectionLegacy(
     if (node.type === 'heading' && toString(node) === heading) {
       found = true;
       const nextHeadingIndex = ast.children.findIndex(
-        (n, idx) => idx > i && n.type === 'heading'
+        (n, idx) => idx > i && n.type === 'heading',
       );
-      const endIndex = nextHeadingIndex === -1 ? ast.children.length : nextHeadingIndex;
+      const endIndex =
+        nextHeadingIndex === -1 ? ast.children.length : nextHeadingIndex;
 
       const newAst = parseMarkdown(newContent);
       ast.children.splice(i + 1, endIndex - i - 1, ...newAst.children);
@@ -389,7 +396,7 @@ export async function detectConflictMarkers(): Promise<ConflictMarker[]> {
 export async function resolveConflict(
   heading: string,
   resolution: 'use-head' | 'use-mcp' | 'manual',
-  manualContent?: string
+  manualContent?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const content = await readInstructionsFile();
   if (!content) {
@@ -397,10 +404,13 @@ export async function resolveConflict(
   }
 
   const conflicts = await detectConflictMarkers();
-  const targetConflict = conflicts.find(c => c.heading === heading);
+  const targetConflict = conflicts.find((c) => c.heading === heading);
 
   if (!targetConflict) {
-    return { success: false, error: `セクション「${heading}」に競合が見つかりません` };
+    return {
+      success: false,
+      error: `セクション「${heading}」に競合が見つかりません`,
+    };
   }
 
   // 解決内容を決定
@@ -414,7 +424,10 @@ export async function resolveConflict(
       break;
     case 'manual':
       if (!manualContent) {
-        return { success: false, error: 'manual解決時はmanualContentが必須です' };
+        return {
+          success: false,
+          error: 'manual解決時はmanualContentが必須です',
+        };
       }
       resolvedContent = manualContent;
       break;
@@ -423,24 +436,30 @@ export async function resolveConflict(
   // 競合マーカーを削除して解決内容に置き換え（テキストベースで処理）
   const headingPattern = new RegExp(`^## ${heading}$`, 'm');
   const headingMatch = content.match(headingPattern);
-  
+
   if (!headingMatch || headingMatch.index === undefined) {
-    return { success: false, error: `セクション「${heading}」が見つかりません` };
+    return {
+      success: false,
+      error: `セクション「${heading}」が見つかりません`,
+    };
   }
 
   const sectionStart = headingMatch.index + headingMatch[0].length;
-  
+
   // 次のセクション（##で始まる行）を探す
   const remainingContent = content.substring(sectionStart);
   const nextHeadingMatch = remainingContent.match(/\n## /);
-  const sectionEnd = nextHeadingMatch && nextHeadingMatch.index !== undefined
-    ? sectionStart + nextHeadingMatch.index 
-    : content.length;
+  const sectionEnd =
+    nextHeadingMatch && nextHeadingMatch.index !== undefined
+      ? sectionStart + nextHeadingMatch.index
+      : content.length;
 
   // 競合マーカーを解決内容で置き換え
-  const newContent = 
+  const newContent =
     content.substring(0, sectionStart) +
-    '\n' + resolvedContent.trim() + '\n' +
+    '\n' +
+    resolvedContent.trim() +
+    '\n' +
     content.substring(sectionEnd);
 
   await writeInstructionsFile(newContent);
@@ -453,7 +472,9 @@ export async function resolveConflict(
  * @param heading 削除するセクションの見出し
  * @returns 成功時はsuccess: true、失敗時はエラーメッセージ
  */
-export async function deleteSection(heading: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteSection(
+  heading: string,
+): Promise<{ success: boolean; error?: string }> {
   const content = await readInstructionsFile();
   if (!content) {
     return { success: false, error: '指示書ファイルが存在しません' };
@@ -462,24 +483,27 @@ export async function deleteSection(heading: string): Promise<{ success: boolean
   // セクションの見出しを検索
   const headingPattern = new RegExp(`^## ${heading}$`, 'm');
   const headingMatch = content.match(headingPattern);
-  
+
   if (!headingMatch || headingMatch.index === undefined) {
-    return { success: false, error: `セクション「${heading}」が見つかりません` };
+    return {
+      success: false,
+      error: `セクション「${heading}」が見つかりません`,
+    };
   }
 
   const sectionStart = headingMatch.index;
-  
+
   // 次のセクション（##で始まる行）を探す
   const remainingContent = content.substring(sectionStart);
   const nextHeadingMatch = remainingContent.match(/\n## /);
-  const sectionEnd = nextHeadingMatch && nextHeadingMatch.index !== undefined
-    ? sectionStart + nextHeadingMatch.index 
-    : content.length;
+  const sectionEnd =
+    nextHeadingMatch && nextHeadingMatch.index !== undefined
+      ? sectionStart + nextHeadingMatch.index
+      : content.length;
 
   // セクションを削除
-  const newContent = 
-    content.substring(0, sectionStart) +
-    content.substring(sectionEnd);
+  const newContent =
+    content.substring(0, sectionStart) + content.substring(sectionEnd);
 
   await writeInstructionsFile(newContent);
 
@@ -498,7 +522,7 @@ export async function insertSection(
   heading: string,
   content: string,
   position: 'before' | 'after' | 'first' | 'last',
-  anchor?: string
+  anchor?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const currentContent = await readInstructionsFile();
   if (!currentContent) {
@@ -508,7 +532,10 @@ export async function insertSection(
   // 既に同じ見出しのセクションが存在するかチェック
   const existingPattern = new RegExp(`^## ${heading}$`, 'm');
   if (existingPattern.test(currentContent)) {
-    return { success: false, error: `セクション「${heading}」は既に存在します` };
+    return {
+      success: false,
+      error: `セクション「${heading}」は既に存在します`,
+    };
   }
 
   // 新しいセクションのテキスト
@@ -521,9 +548,10 @@ export async function insertSection(
       // ファイルの先頭に挿入（タイトルの後）
       // "# Copilot Instructions" などのタイトル行の後を探す
       const titleMatch = currentContent.match(/^#[^#].*$/m);
-      insertIndex = titleMatch && titleMatch.index !== undefined
-        ? titleMatch.index + titleMatch[0].length + 1
-        : 0;
+      insertIndex =
+        titleMatch && titleMatch.index !== undefined
+          ? titleMatch.index + titleMatch[0].length + 1
+          : 0;
       break;
     }
 
@@ -536,15 +564,21 @@ export async function insertSection(
     case 'before':
     case 'after': {
       if (!anchor) {
-        return { success: false, error: `position='${position}'の場合はanchorが必須です` };
+        return {
+          success: false,
+          error: `position='${position}'の場合はanchorが必須です`,
+        };
       }
 
       // アンカーセクションを検索
       const anchorPattern = new RegExp(`^## ${anchor}$`, 'm');
       const anchorMatch = currentContent.match(anchorPattern);
-      
+
       if (!anchorMatch || anchorMatch.index === undefined) {
-        return { success: false, error: `アンカーセクション「${anchor}」が見つかりません` };
+        return {
+          success: false,
+          error: `アンカーセクション「${anchor}」が見つかりません`,
+        };
       }
 
       if (position === 'before') {
@@ -555,10 +589,11 @@ export async function insertSection(
         const sectionStart = anchorMatch.index;
         const remainingContent = currentContent.substring(sectionStart);
         const nextHeadingMatch = remainingContent.match(/\n## /);
-        
-        insertIndex = nextHeadingMatch && nextHeadingMatch.index !== undefined
-          ? sectionStart + nextHeadingMatch.index + 1
-          : currentContent.length;
+
+        insertIndex =
+          nextHeadingMatch && nextHeadingMatch.index !== undefined
+            ? sectionStart + nextHeadingMatch.index + 1
+            : currentContent.length;
       }
       break;
     }
@@ -568,7 +603,7 @@ export async function insertSection(
   }
 
   // セクションを挿入
-  const newContent = 
+  const newContent =
     currentContent.substring(0, insertIndex) +
     newSection +
     currentContent.substring(insertIndex);
@@ -577,4 +612,3 @@ export async function insertSection(
 
   return { success: true };
 }
-

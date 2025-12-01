@@ -58,24 +58,26 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
   if (args.action !== 'read' && args.action !== 'detect-conflicts') {
     const restricted = await isRestrictedMode();
     if (restricted) {
-      return '❗ Restricted Mode: This action is not available.\n\n' +
-             'Please complete onboarding or use in read-only mode.\n\n' +
-             '[Check Details]\n' +
-             'onboarding({ action: "status" })\n\n' +
-             '[Onboarding]\n' +
-             'onboarding({ action: "analyze" })';
+      return (
+        '❗ Restricted Mode: This action is not available.\n\n' +
+        'Please complete onboarding or use in read-only mode.\n\n' +
+        '[Check Details]\n' +
+        'onboarding({ action: "status" })\n\n' +
+        '[Onboarding]\n' +
+        'onboarding({ action: "analyze" })'
+      );
     }
   }
-  
+
   switch (args.action) {
     case 'read': {
       const sections = await readInstructionsSections();
       if (sections.length === 0) {
         return 'Instructions file does not exist or has no sections.';
       }
-      
+
       let result = '';
-      
+
       // If including Git information
       if (args.includeGitInfo) {
         const fileState = await readInstructionsFileWithState();
@@ -83,12 +85,12 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
           result += '📊 File State:\n';
           result += `  • SHA-256: ${fileState.state.hash.substring(0, 16)}...\n`;
           result += `  • Size: ${fileState.content.length} bytes\n`;
-          
+
           if (fileState.state.isGitManaged) {
             result += `  • Git managed: ✓\n`;
             result += `  • Commit: ${fileState.state.gitCommit?.substring(0, 8)}...\n`;
             result += `  • Status: ${fileState.state.gitStatus}\n`;
-            
+
             if (fileState.state.gitStatus === 'modified') {
               result += `  ⚠️ Uncommitted changes detected\n`;
             }
@@ -98,15 +100,15 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
           result += '\n';
         }
       }
-      
+
       const summary = sections
         .map(
           (s, i) =>
-            `${i + 1}. ${'#'.repeat(s.level)} ${s.heading} (${s.content.length} chars)`
+            `${i + 1}. ${'#'.repeat(s.level)} ${s.heading} (${s.content.length} chars)`,
         )
         .join('\n');
       result += `Instructions section structure (${sections.length} sections total):\n\n${summary}`;
-      
+
       return result;
     }
 
@@ -128,12 +130,12 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         return `Section "${args.heading}" updated.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        
+
         // Clear message for lock acquisition failure
         if (message.includes('Failed to acquire lock')) {
           return `❗ Lock acquisition timeout: Another session is updating instructions. Please wait and retry.`;
         }
-        
+
         return `Error: ${message}`;
       }
     }
@@ -149,8 +151,10 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
           .map((c, i) => `${i + 1}. Section: ${c.heading}`)
           .join('\n');
 
-        return `${conflicts.length} conflicts detected:\n\n${conflictList}\n\n` +
-          `To resolve, use action='resolve-conflict'.`;
+        return (
+          `${conflicts.length} conflicts detected:\n\n${conflictList}\n\n` +
+          `To resolve, use action='resolve-conflict'.`
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return `Error: ${message}`;
@@ -164,7 +168,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
           return await resolveConflict(
             args.heading,
             args.resolution,
-            args.manualContent
+            args.manualContent,
           );
         });
 
@@ -176,8 +180,8 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
           args.resolution === 'use-head'
             ? 'used external changes'
             : args.resolution === 'use-mcp'
-            ? 'used Copilot changes'
-            : 'manual merge';
+              ? 'used Copilot changes'
+              : 'manual merge';
 
         return `✓ Conflict in section "${args.heading}" resolved (${resolutionMsg}).`;
       } catch (error) {
@@ -200,11 +204,11 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         return `✓ Section "${args.heading}" deleted.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        
+
         if (message.includes('Failed to acquire lock')) {
           return `❗ Lock acquisition timeout: Another session is updating instructions. Please wait and retry.`;
         }
-        
+
         return `Error: ${message}`;
       }
     }
@@ -217,7 +221,7 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
             args.heading,
             args.content,
             args.position,
-            args.anchor
+            args.anchor,
           );
         });
 
@@ -229,19 +233,19 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
           args.position === 'first'
             ? 'at the beginning'
             : args.position === 'last'
-            ? 'at the end'
-            : args.position === 'before'
-            ? `before "${args.anchor}"`
-            : `after "${args.anchor}"`;
+              ? 'at the end'
+              : args.position === 'before'
+                ? `before "${args.anchor}"`
+                : `after "${args.anchor}"`;
 
         return `✓ Section "${args.heading}" inserted ${positionMsg}.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        
+
         if (message.includes('Failed to acquire lock')) {
           return `❌ Lock acquisition timeout: Another session is updating instructions. Please wait and retry.`;
         }
-        
+
         return `Error: ${message}`;
       }
     }

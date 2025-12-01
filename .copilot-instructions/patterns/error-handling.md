@@ -9,6 +9,8 @@ required: false
 phases:
   - development
   - debugging
+copilotEssential: true
+copilotEssentialReason: Error handling is always important
 ---
 
 # Error Handling Patterns

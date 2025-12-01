@@ -59,7 +59,6 @@ export async function testMyFeature(): Promise<void> {
     logger.step(2, 'Description of step 2');
     // More test code
     logger.info('Some information');
-
   } catch (error) {
     logger.error(`Test failed: ${error}`);
     throw error;
@@ -88,6 +87,7 @@ runner.register({
 ### TestLogger
 
 Provides structured logging for tests:
+
 - `logger.start()` - Start test
 - `logger.step(n, desc)` - Mark test step
 - `logger.success(msg)` - Log success
@@ -98,6 +98,7 @@ Provides structured logging for tests:
 ### TestContext
 
 Provides workspace paths:
+
 ```typescript
 import { createTestContext } from '../helpers/test-setup.js';
 
@@ -110,7 +111,7 @@ const ctx = await createTestContext();
 
 ## Known Issues
 
-- ESM `__dirname` compatibility: Some source files still use `__dirname` which doesn't work in ESM. 
+- ESM `__dirname` compatibility: Some source files still use `__dirname` which doesn't work in ESM.
   These need to be refactored to use `import.meta.url` and `fileURLToPath()`.
 - See `src/utils/pathUtils.ts` for helper functions.
 

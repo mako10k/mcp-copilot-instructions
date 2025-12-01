@@ -1,7 +1,7 @@
 /**
  * instructionsAnalyzer.ts
  * Existing instructions analysis logic
- * 
+ *
  * Responsibilities:
  * - Check instructions existence
  * - Pattern classification (clean/structured/unstructured/messy)
@@ -17,17 +17,17 @@ import { readInstructionsFile } from './fileSystem.js';
 export interface AnalysisResult {
   exists: boolean;
   pattern: 'clean' | 'structured' | 'unstructured' | 'messy';
-  
+
   structured?: {
-    sections: Array<{ 
-      heading: string; 
-      lineCount: number; 
+    sections: Array<{
+      heading: string;
+      lineCount: number;
       startLine: number;
       content: string;
     }>;
     compatible: boolean;
   };
-  
+
   unstructured?: {
     contentLength: number;
     lineCount: number;
@@ -37,13 +37,13 @@ export interface AnalysisResult {
       confidence: number; // 0-1
     }>;
   };
-  
+
   problems?: Array<{
     type: 'contradiction' | 'duplication' | 'unclear';
     description: string;
     locations: Array<{ line: number; text: string }>;
   }>;
-  
+
   recommendation: string;
 }
 
@@ -62,21 +62,21 @@ interface Section {
  */
 export async function analyzeInstructions(): Promise<AnalysisResult> {
   const content = await readInstructionsFile();
-  
+
   // Pattern 1: No instructions (clean)
   if (!content) {
     return {
       exists: false,
       pattern: 'clean',
-      recommendation: 'Can create new. Start using as is.'
+      recommendation: 'Can create new. Start using as is.',
     };
   }
-  
+
   const lines = content.split('\n');
-  
+
   // Detect problems first (common for patterns 2 and 4)
   const problems = detectProblems(content, lines);
-  
+
   // Pattern 2 or 4: Structured (## section format)
   const sections = extractSections(content);
   if (sections.length > 0) {
@@ -87,35 +87,36 @@ export async function analyzeInstructions(): Promise<AnalysisResult> {
         pattern: 'messy',
         problems,
         structured: {
-          sections: sections.map(s => ({
+          sections: sections.map((s) => ({
             heading: s.heading,
             lineCount: s.lines.length,
             startLine: s.startLine,
-            content: s.content
+            content: s.content,
           })),
-          compatible: false
+          compatible: false,
         },
-        recommendation: '矛盾や重複が検出されました。手動での整理をお勧めします。'
+        recommendation:
+          '矛盾や重複が検出されました。手動での整理をお勧めします。',
       };
     }
-    
+
     // 問題がない場合はパターン2（structured）
     return {
       exists: true,
       pattern: 'structured',
       structured: {
-        sections: sections.map(s => ({
+        sections: sections.map((s) => ({
           heading: s.heading,
           lineCount: s.lines.length,
           startLine: s.startLine,
-          content: s.content
+          content: s.content,
         })),
-        compatible: true
+        compatible: true,
       },
-      recommendation: '既存の指示書を検出しました。そのまま利用できます。'
+      recommendation: '既存の指示書を検出しました。そのまま利用できます。',
     };
   }
-  
+
   // パターン3 or 4: セクションなし
   if (problems.length > 0) {
     // パターン4: めちゃくちゃ（矛盾・重複あり、セクションなし）
@@ -123,10 +124,11 @@ export async function analyzeInstructions(): Promise<AnalysisResult> {
       exists: true,
       pattern: 'messy',
       problems,
-      recommendation: '矛盾や重複が検出されました。手動での整理をお勧めします。'
+      recommendation:
+        '矛盾や重複が検出されました。手動での整理をお勧めします。',
     };
   }
-  
+
   // パターン3: 非構造化（問題はないが整理されていない）
   const suggested = suggestSections(content, lines);
   return {
@@ -135,28 +137,31 @@ export async function analyzeInstructions(): Promise<AnalysisResult> {
     unstructured: {
       contentLength: content.length,
       lineCount: lines.length,
-      suggestedSections: suggested
+      suggestedSections: suggested,
     },
-    recommendation: '構造化することで管理しやすくなります。提案を確認しますか？'
+    recommendation:
+      '構造化することで管理しやすくなります。提案を確認しますか？',
   };
 }
 
 /**
  * Extract sections (lines starting with ##)
- * 
+ *
  * Extract existing sections from structured instructions
  */
 export function extractSections(content: string): Section[] {
   const lines = content.split('\n');
   const sections: Section[] = [];
   let currentSection: Section | null = null;
-  
+
   lines.forEach((line, index) => {
     const match = line.match(/^## (.+)$/);
     if (match) {
       // Save previous section
       if (currentSection) {
-        (currentSection as Section).content = (currentSection as Section).lines.join('\n').trim();
+        (currentSection as Section).content = (currentSection as Section).lines
+          .join('\n')
+          .trim();
         sections.push(currentSection as Section);
       }
       // 新しいセクションを開始
@@ -164,25 +169,27 @@ export function extractSections(content: string): Section[] {
         heading: match[1].trim(),
         lines: [],
         startLine: index + 1,
-        content: ''
+        content: '',
       } as Section;
     } else if (currentSection) {
       (currentSection as Section).lines.push(line);
     }
   });
-  
+
   // 最後のセクションを保存
   if (currentSection) {
-    (currentSection as Section).content = (currentSection as Section).lines.join('\n').trim();
+    (currentSection as Section).content = (currentSection as Section).lines
+      .join('\n')
+      .trim();
     sections.push(currentSection as Section);
   }
-  
+
   return sections;
 }
 
 /**
  * Detect problems (contradictions/duplications)
- * 
+ *
  * Detect problems from messy instructions
  */
 type Problem = {
@@ -191,12 +198,9 @@ type Problem = {
   locations: Array<{ line: number; text: string }>;
 };
 
-export function detectProblems(
-  content: string, 
-  lines: string[]
-): Problem[] {
+export function detectProblems(content: string, lines: string[]): Problem[] {
   const problems: Problem[] = [];
-  
+
   // 1. Detect duplicate sections
   const headings = new Map<string, number[]>();
   lines.forEach((line, index) => {
@@ -209,112 +213,119 @@ export function detectProblems(
       headings.get(heading)!.push(index + 1);
     }
   });
-  
+
   headings.forEach((lineNumbers, heading) => {
     if (lineNumbers.length > 1) {
       problems.push({
         type: 'duplication',
         description: `重複セクション: "${heading}"`,
-        locations: lineNumbers.map(line => ({
+        locations: lineNumbers.map((line) => ({
           line,
-          text: lines[line - 1]
-        }))
+          text: lines[line - 1],
+        })),
       });
     }
   });
-  
+
   // 2. Detect contradictions (simple keyword-based)
   const contradictionPatterns = [
-    { 
-      positive: /any.*禁止|anyを?使わない|any.*NG|any.*避ける/i, 
-      negative: /any.*OK|anyを?使[うえ]|any.*許可|any.*可能/i, 
-      term: 'any型の使用' 
+    {
+      positive: /any.*禁止|anyを?使わない|any.*NG|any.*避ける/i,
+      negative: /any.*OK|anyを?使[うえ]|any.*許可|any.*可能/i,
+      term: 'any型の使用',
     },
-    { 
-      positive: /camelCase/i, 
-      negative: /snake_case/i, 
-      term: '命名規則（camelCase vs snake_case）' 
+    {
+      positive: /camelCase/i,
+      negative: /snake_case/i,
+      term: '命名規則（camelCase vs snake_case）',
     },
-    { 
-      positive: /PascalCase/i, 
-      negative: /camelCase.*クラス|クラス.*camelCase/i, 
-      term: 'クラス命名規則' 
+    {
+      positive: /PascalCase/i,
+      negative: /camelCase.*クラス|クラス.*camelCase/i,
+      term: 'クラス命名規則',
     },
-    { 
-      positive: /Jest/i, 
-      negative: /Vitest/i, 
-      term: 'テストフレームワーク（Jest vs Vitest）' 
+    {
+      positive: /Jest/i,
+      negative: /Vitest/i,
+      term: 'テストフレームワーク（Jest vs Vitest）',
     },
-    { 
-      positive: /ESLint/i, 
-      negative: /TSLint/i, 
-      term: 'リンター（ESLint vs TSLint）' 
-    }
+    {
+      positive: /ESLint/i,
+      negative: /TSLint/i,
+      term: 'リンター（ESLint vs TSLint）',
+    },
   ];
-  
-  contradictionPatterns.forEach(pattern => {
+
+  contradictionPatterns.forEach((pattern) => {
     const positiveLines: number[] = [];
     const negativeLines: number[] = [];
-    
+
     lines.forEach((line, index) => {
       if (pattern.positive.test(line)) positiveLines.push(index + 1);
       if (pattern.negative.test(line)) negativeLines.push(index + 1);
     });
-    
+
     if (positiveLines.length > 0 && negativeLines.length > 0) {
       problems.push({
         type: 'contradiction',
         description: `矛盾: ${pattern.term}`,
         locations: [
-          ...positiveLines.slice(0, 2).map(line => ({ line, text: lines[line - 1] })),
-          ...negativeLines.slice(0, 2).map(line => ({ line, text: lines[line - 1] }))
-        ]
+          ...positiveLines
+            .slice(0, 2)
+            .map((line) => ({ line, text: lines[line - 1] })),
+          ...negativeLines
+            .slice(0, 2)
+            .map((line) => ({ line, text: lines[line - 1] })),
+        ],
       });
     }
   });
-  
+
   return problems;
 }
 
 /**
  * セクション提案（非構造化コンテンツ向け）
- * 
+ *
  * フリーフォーマットの指示書から自然なセクション分けを提案
  * 注: 本格的な実装ではLLM活用が望ましいが、ここではキーワードベースで実装
  */
 export function suggestSections(
   content: string,
-  lines: string[]
+  lines: string[],
 ): Array<{
   heading: string;
   content: string;
   confidence: number;
 }> {
-  const suggestions: Array<{ 
-    heading: string; 
-    content: string; 
+  const suggestions: Array<{
+    heading: string;
+    content: string;
     confidence: number;
   }> = [];
-  
+
   // キーワードベースの分類
   const keywords: Record<string, RegExp> = {
-    'TypeScript規約': /typescript|型|type|interface|any|unknown|as const|generics|ジェネリック/i,
-    'テストパターン': /test|jest|vitest|spec|coverage|テスト|単体テスト|統合テスト/i,
-    '命名規則': /命名|camelCase|snake_case|PascalCase|変数名|関数名|クラス名|定数名/i,
-    'コーディング規約': /規約|convention|style|スタイル|フォーマット/i,
+    TypeScript規約:
+      /typescript|型|type|interface|any|unknown|as const|generics|ジェネリック/i,
+    テストパターン:
+      /test|jest|vitest|spec|coverage|テスト|単体テスト|統合テスト/i,
+    命名規則:
+      /命名|camelCase|snake_case|PascalCase|変数名|関数名|クラス名|定数名/i,
+    コーディング規約: /規約|convention|style|スタイル|フォーマット/i,
     'Linter・Formatter': /eslint|prettier|lint|format|フォーマッター/i,
-    'ファイル構成': /ファイル|構成|ディレクトリ|フォルダ|import|インポート順/i,
-    'エラーハンドリング': /error|exception|エラー|例外|try.*catch|throw/i,
-    'コメント': /comment|コメント|ドキュメント|JSDoc|注釈/i
+    ファイル構成: /ファイル|構成|ディレクトリ|フォルダ|import|インポート順/i,
+    エラーハンドリング: /error|exception|エラー|例外|try.*catch|throw/i,
+    コメント: /comment|コメント|ドキュメント|JSDoc|注釈/i,
   };
-  
+
   const contentBySection = new Map<string, string[]>();
-  
+
   // 各行をキーワードで分類
-  lines.forEach(line => {
+  lines.forEach((line) => {
     const trimmedLine = line.trim();
     if (!trimmedLine) return; // 空行はスキップ
-    
+
     Object.entries(keywords).forEach(([section, pattern]) => {
       if (pattern.test(line)) {
         if (!contentBySection.has(section)) {
@@ -324,62 +335,64 @@ export function suggestSections(
       }
     });
   });
-  
+
   // セクションを生成
   contentBySection.forEach((sectionLines, heading) => {
     // 重複行を削除（複数のセクションにマッチした場合）
     const uniqueLines = Array.from(new Set(sectionLines));
-    
+
     // 信頼度の計算（行数と内容の充実度で判定）
     let confidence = 0.5; // 基本信頼度
     confidence += Math.min(0.3, uniqueLines.length * 0.05); // 行数による加算（最大+0.3）
-    
+
     // 具体的なキーワードがあれば信頼度を上げる
-    const hasSpecificKeywords = uniqueLines.some(line => 
-      /^-|^[0-9]+\.|例:|推奨|禁止|必須/.test(line.trim())
+    const hasSpecificKeywords = uniqueLines.some((line) =>
+      /^-|^[0-9]+\.|例:|推奨|禁止|必須/.test(line.trim()),
     );
     if (hasSpecificKeywords) {
       confidence += 0.1;
     }
-    
+
     suggestions.push({
       heading,
       content: uniqueLines.join('\n'),
-      confidence: Math.min(0.95, confidence) // 最大0.95
+      confidence: Math.min(0.95, confidence), // 最大0.95
     });
   });
-  
+
   // 分類できなかった行は「その他」に
   const categorizedLines = new Set<string>();
-  contentBySection.forEach(sectionLines => {
-    sectionLines.forEach(line => categorizedLines.add(line));
+  contentBySection.forEach((sectionLines) => {
+    sectionLines.forEach((line) => categorizedLines.add(line));
   });
-  
-  const uncategorized = lines.filter(line => {
+
+  const uncategorized = lines.filter((line) => {
     const trimmed = line.trim();
     return trimmed && !categorizedLines.has(line);
   });
-  
+
   if (uncategorized.length > 0) {
     // タイトル行（# で始まる）や自動生成コメントは除外
-    const filteredUncategorized = uncategorized.filter(line => {
+    const filteredUncategorized = uncategorized.filter((line) => {
       const trimmed = line.trim();
-      return !trimmed.startsWith('#') && 
-             !trimmed.includes('Auto-generated') &&
-             !trimmed.includes('自動生成');
+      return (
+        !trimmed.startsWith('#') &&
+        !trimmed.includes('Auto-generated') &&
+        !trimmed.includes('自動生成')
+      );
     });
-    
+
     if (filteredUncategorized.length > 0) {
       suggestions.push({
         heading: 'その他',
         content: filteredUncategorized.join('\n'),
-        confidence: 0.3 // 低い信頼度
+        confidence: 0.3, // 低い信頼度
       });
     }
   }
-  
+
   // 信頼度でソート（高い順）
   suggestions.sort((a, b) => b.confidence - a.confidence);
-  
+
   return suggestions;
 }

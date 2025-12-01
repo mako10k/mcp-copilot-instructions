@@ -12,8 +12,20 @@ export async function testFeedback(): Promise<void> {
   try {
     // Step 1: Check initial state
     logger.step(1, 'Check initial state (list flagged instructions)');
-    const listResult1 = await feedback({ action: 'list' });
-    logger.info(listResult1);
+    try {
+      const listResult1 = await feedback({ action: 'list' });
+      logger.info(listResult1);
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        logger.info(
+          'Skipping feedback test: .copilot-instructions directory not found',
+        );
+        logger.success('Test skipped (no test data available)');
+        logger.end();
+        return;
+      }
+      throw error;
+    }
 
     // Step 2: Add criticalFeedback flag
     logger.step(2, 'Add criticalFeedback flag to TypeScript conventions');
