@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "focusKeywordMatch": 10,
+    "tagMatch": 5,
+    "phaseMatch": 8,
+    "filePathMatch": 7,
+    "priorityHigh": 3,
+    "priorityMedium": 1,
+    "priorityLow": 0,
+    "required": 1000,
+    "criticalFeedback": 500,
+    "copilotEssential": 300
+  },
+  "limits": {
+    "maxSections": 10,
+    "maxItemsPerSection": 4,
+    "scoreThreshold": 3
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-12-01",
+    "description": "Scoring rules for dynamic instruction generation. Adjust these values to change how instructions are filtered."
+  }
+}

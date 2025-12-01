@@ -7,6 +7,7 @@ import {
 import { guidance } from './tools/guidance';
 import { projectContext } from './tools/project_context';
 import { instructionsStructure } from './tools/instructions_structure';
+import { changeContext } from './tools/change_context';
 
 const server = new Server(
   {
@@ -93,6 +94,53 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: 'change_context',
+        description:
+          '開発の文脈・状態を変更し、それをトリガーに指示書を自動再生成。' +
+          'phase/focus/priority/modeを設定すると、関連する指示だけが.github/copilot-instructions.mdに抽出される。',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['update', 'read', 'reset'],
+              description: 'アクション: update(状態更新) / read(現在の状態取得) / reset(デフォルトに戻す)',
+            },
+            state: {
+              type: 'object',
+              properties: {
+                phase: {
+                  type: 'string',
+                  enum: ['development', 'refactoring', 'testing', 'debugging', 'documentation'],
+                  description: '開発フェーズ',
+                },
+                focus: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: '現在のフォーカス（例: ["API認証", "JWT"]）',
+                },
+                priority: {
+                  type: 'string',
+                  enum: ['high', 'medium', 'low'],
+                  description: '現在のタスク優先度',
+                },
+                mode: {
+                  type: 'string',
+                  enum: ['normal', 'strict', 'experimental'],
+                  description: '動作モード',
+                },
+              },
+              description: '更新する状態（updateの場合に指定）',
+            },
+            autoRegenerate: {
+              type: 'boolean',
+              description: '自動的に指示書を再生成するか（デフォルト: true）',
+            },
+          },
+          required: ['action'],
+        },
+      },
+      {
         name: 'instructions_structure',
         description:
           '指示書Markdown ASTのCRUD操作と競合管理。' +
@@ -160,6 +208,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case 'project_context': {
         const result = await projectContext(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+      case 'change_context': {
+        const result = await changeContext(args as any);
         return {
           content: [{ type: 'text', text: result }],
         };

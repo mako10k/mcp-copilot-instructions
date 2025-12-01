@@ -56,9 +56,9 @@ export interface ConflictInfo {
 }
 
 /**
- * 文字列のSHA-256ハッシュを計算
+ * SHA-256ハッシュ値を計算
  */
-function calculateHash(content: string): string {
+export function calculateHash(content: string): string {
   return crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
 }
 

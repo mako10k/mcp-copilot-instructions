@@ -1018,4 +1018,159 @@ async function checkGitAvailable(): Promise<boolean> {
 ### 成果
 - 環境依存性の軽減
 - より広い環境での利用可能性
+
+---
+
+## シナリオ8: 動的指示書生成（Phase 2開始）
+
+**日付**: 2025年12月1日  
+**目的**: LLMのアテンション分散問題を解決する動的指示書生成エンジンの実装
+
+### 課題背景
+- 開発が進むと指示書が肥大化 → LLMのアテンションが分散
+- 重要な指示が効かなくなる
+- 「今の流れに必要な指示だけ」を提供する仕組みが必要
+
+### 実装内容
+
+#### 1. `.copilot-instructions/` ディレクトリ構造
+```
+.copilot-instructions/
+  ├── _templates/        # MCPツール使い方テンプレート
+  ├── tools/             # mcp-server-usage.md (required: true)
+  ├── architecture/      # api-design.md等
+  ├── patterns/          # error-handling.md, testing.md等
+  ├── conventions/       # typescript.md (required: true), git-workflow.md
+  └── phases/            # development.md, refactoring.md, debugging.md
+```
+
+**フロントマター形式**:
+```yaml
+---
+category: conventions
+tags: [typescript, coding-style]
+priority: high
+required: true  # 常に含める場合
+phases: [development, refactoring]
+---
+```
+
+#### 2. スコアリングルール（`.copilot-state/scoring-rules.json`）
+```json
+{
+  "rules": {
+    "focusKeywordMatch": 10,
+    "tagMatch": 5,
+    "phaseMatch": 8,
+    "filePathMatch": 7,
+    "priorityHigh": 3,
+    "required": 1000,        # 必須指示
+    "criticalFeedback": 500, # 人間の強い指摘
+    "copilotEssential": 300  # Copilot判断で必須
+  },
+  "limits": {
+    "maxSections": 10,
+    "maxItemsPerSection": 4
+  }
+}
+```
+
+#### 3. `change_context` ツール
+開発の文脈・状態を変更し、自動的に指示書を再生成。
+
+**パラメータ**:
+```typescript
+{
+  action: "update" | "read" | "reset",
+  state?: {
+    phase: "development" | "refactoring" | "testing" | "debugging" | "documentation",
+    focus: string[],  // ["API認証", "JWT"]
+    priority: "high" | "medium" | "low",
+    mode: "normal" | "strict" | "experimental"
+  },
+  autoRegenerate?: boolean  // デフォルト: true
+}
+```
+
+**使用例**:
+```typescript
+change_context({
+  action: "update",
+  state: {
+    phase: "development",
+    focus: ["API認証", "JWT", "セキュリティ"],
+    priority: "high"
+  }
+})
+// → 自動的に .github/copilot-instructions.md が再生成される
+```
+
+#### 4. `generateInstructions()` 関数（内部専用）
+- gray-matterでフロントマター付きMarkdownをパース
+- スコアリングアルゴリズムで関連指示を抽出
+- 必須指示（required: true）は常に含める
+- 最大10セクション、各セクション3-4項目
+
+**選択ロジック**:
+1. 必須指示（required: true）を抽出
+2. 任意指示をスコアリング
+3. スコア順に上位を選択（maxSections - 必須数）
+4. Markdown生成して `.github/copilot-instructions.md` に書き込み
+
+### テスト結果
+
+**テスト1: 現在の状態取得**
+```json
+{
+  "success": true,
+  "context": {
+    "phase": "development",
+    "focus": [],
+    "priority": "medium",
+    "mode": "normal"
+  }
+}
+```
+
+**テスト2: 開発フェーズに切り替え（API認証焦点）**
+- 焦点: ["API認証", "JWT", "セキュリティ"]
+- 生成セクション数: 8
+- 自動生成成功: ✓
+
+**テスト3: 生成された指示書確認**
+- ファイル: `.github/copilot-instructions.md`
+- 行数: 296行
+- 内容: 必須2セクション + 関連6セクション
+
+**テスト4: リファクタリングフェーズに切り替え**
+- フェーズ変更: development → refactoring
+- 生成セクション数: 4（関連指示が変化）
+
+**テスト5: リセット**
+- デフォルト状態に戻す: ✓
+
+### 実装ファイル
+- `server/src/utils/generateInstructions.ts`: フィルタリングロジック
+- `server/src/tools/change_context.ts`: ツール実装
+- `server/src/index.ts`: ツール登録
+- `.copilot-instructions/**/*.md`: 指示書データベース（10ファイル）
+- `.copilot-state/scoring-rules.json`: スコアリングルール
+- `.copilot-state/context.json`: 現在の文脈
+
+### 新規パッケージ
+- `gray-matter`: フロントマター付きMarkdownパース
+
+### 成果
+✅ LLMのアテンション集中（膨大な知識を持ちつつ、今必要な指示だけ提供）  
+✅ 文脈依存の動的生成（phase/focusから自動抽出）  
+✅ 柔軟なスコアリング（`.copilot-state/scoring-rules.json`で調整可能）  
+✅ 必須指示の保証（required/criticalFeedback/copilotEssential）  
+✅ 軽量なツール（change_contextのみ、generate_instructionsは内部専用）  
+✅ 透過的な動作（状態変更時に自動再生成）
+
+### 設計の確定事項
+- **ツール数**: 最小限（change_context のみ追加、generate_instructionsは内部関数）
+- **トリガー**: change_context実行時に自動
+- **セクション制限**: maxSections=10, maxItemsPerSection=3-4
+- **Git統合**: 指示書データベース全体をGit管理推奨
 - ロバスト性の向上
