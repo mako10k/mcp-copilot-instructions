@@ -108,6 +108,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 'アクション: read(構造取得) / update(セクション更新) / ' +
                 'detect-conflicts(競合検出) / resolve-conflict(競合解決)',
             },
+            includeGitInfo: {
+              type: 'boolean',
+              description: 'Git情報を含めるか（readの場合のみ、デフォルト: false）',
+            },
             heading: {
               type: 'string',
               description: 'セクション見出し（update/resolve-conflictの場合必須）',

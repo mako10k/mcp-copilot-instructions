@@ -51,6 +51,12 @@
     - Git風競合マーカー挿入
     - detect-conflicts/resolve-conflict アクション
     - 全6テストシナリオパス
+  - Step 2: Git統合 ✅ (2025-12-01)
+    - checkGitManaged/getGitStatus/getGitDiff/getGitCommit
+    - FileStateにGit情報追加
+    - instructions_structureでGit状態表示
+    - 全7テストシナリオパス
+- ✅ Scenario 7: Git統合 (PBI-001 Step 2) - 2025-12-01完了
 
 ## 存在しないセクション
 

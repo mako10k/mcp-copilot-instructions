@@ -239,10 +239,15 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 - [x] テキストベース処理で競合マーカー保持（Markdownパーサー回避）
 - [x] 初期スナップショット機能で外部変更検出
 
-**Step 2: Git統合** (Phase 2後半)
-- [ ] Git管理状態を自動判定
-- [ ] `git status`で未コミット変更を検知
-- [ ] `git diff`で変更内容を表示
+**Step 2: Git統合** ✅ (完了 2025-12-01)
+- [x] Git管理状態を自動判定 (checkGitManaged)
+- [x] `git status`で未コミット変更を検知 (getGitStatus)
+- [x] `git diff`で変更内容を表示 (getGitDiff)
+- [x] コミットハッシュ取得 (getGitCommit)
+- [x] FileState型にGit情報追加
+- [x] readWithState関数のGit対応
+- [x] instructions_structureにGit情報表示機能
+- [x] テストスクリプト作成と検証
 
 **Step 3: 高度な機能** (Phase 3)
 - [ ] 3-way diff表示

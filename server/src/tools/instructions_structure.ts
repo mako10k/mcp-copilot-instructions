@@ -4,9 +4,11 @@ import {
   detectConflictMarkers,
   resolveConflict,
 } from '../utils/markdownAst';
+import { readInstructionsFileWithState } from '../utils/fileSystem';
 
 interface ReadStructureArgs {
   action: 'read';
+  includeGitInfo?: boolean;
 }
 
 interface UpdateStructureArgs {
@@ -39,13 +41,41 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
       if (sections.length === 0) {
         return '指示書が存在しないか、セクションがありません。';
       }
+      
+      let result = '';
+      
+      // Git情報を含める場合
+      if (args.includeGitInfo) {
+        const fileState = await readInstructionsFileWithState();
+        if (fileState) {
+          result += '📊 ファイル状態:\n';
+          result += `  • SHA-256: ${fileState.state.hash.substring(0, 16)}...\n`;
+          result += `  • サイズ: ${fileState.content.length} bytes\n`;
+          
+          if (fileState.state.isGitManaged) {
+            result += `  • Git管理: ✓\n`;
+            result += `  • コミット: ${fileState.state.gitCommit?.substring(0, 8)}...\n`;
+            result += `  • ステータス: ${fileState.state.gitStatus}\n`;
+            
+            if (fileState.state.gitStatus === 'modified') {
+              result += `  ⚠️ 未コミットの変更があります\n`;
+            }
+          } else {
+            result += `  • Git管理: ✗\n`;
+          }
+          result += '\n';
+        }
+      }
+      
       const summary = sections
         .map(
           (s, i) =>
             `${i + 1}. ${'#'.repeat(s.level)} ${s.heading} (${s.content.length}文字)`
         )
         .join('\n');
-      return `指示書のセクション構造（全${sections.length}セクション）:\n\n${summary}`;
+      result += `指示書のセクション構造（全${sections.length}セクション）:\n\n${summary}`;
+      
+      return result;
     }
 
     case 'update': {

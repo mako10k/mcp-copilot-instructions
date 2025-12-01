@@ -833,6 +833,80 @@ case 'resolve-conflict': {
 2. updateSection内での2回読み込みでは外部変更検出不可 → initialSnapshotパラメータ追加
 3. resolveConflictでASTベース処理が競合マーカーを削除できず → テキストベース置換に変更
 
+---
+
+## シナリオ7: Git統合 (PBI-001 Step 2)
+
+### 目標
+Git管理下での安全性を向上させるため、Git情報を取得・表示する機能を実装。
+
+### 実装内容
+
+#### 1. Git関連ユーティリティ関数
+```typescript
+// fileSystem.ts
+export async function checkGitManaged(filePath: string): Promise<boolean>
+export async function getGitCommit(filePath: string): Promise<string | undefined>
+export async function getGitStatus(filePath: string): Promise<string | undefined>
+export async function getGitDiff(filePath: string): Promise<string | undefined>
+```
+
+#### 2. FileState型の拡張
+```typescript
+export interface FileState {
+  path: string;
+  hash: string;
+  timestamp: number;
+  isGitManaged?: boolean;  // 新規
+  gitCommit?: string;      // 新規
+  gitStatus?: string;      // 新規 (modified, untracked, unmodified等)
+}
+```
+
+#### 3. readWithStateのGit対応
+```typescript
+export async function readWithState(
+  filePath: string,
+  includeGitInfo: boolean = true  // 新規パラメータ
+): Promise<{ content: string; state: FileState }>
+```
+
+#### 4. instructions_structureにGit情報表示
+```typescript
+interface ReadStructureArgs {
+  action: 'read';
+  includeGitInfo?: boolean;  // 新規パラメータ
+}
+```
+
+表示例:
+```
+📊 ファイル状態:
+  • SHA-256: 0eca8ea9ffb640f7...
+  • サイズ: 1872 bytes
+  • Git管理: ✓
+  • コミット: 2b487302...
+  • ステータス: modified
+  ⚠️ 未コミットの変更があります
+```
+
+### テスト結果
+✅ テスト1: Git管理状態の確認  
+✅ テスト2: コミットハッシュ取得  
+✅ テスト3: Gitステータス確認  
+✅ テスト4: Git情報付きreadWithState  
+✅ テスト5: readInstructionsFileWithState  
+✅ テスト6: ファイル変更後diff検出  
+✅ テスト7: 変更後のハッシュ変化検出  
+
+### 実装状況: ✅ 完了 (2025-12-01)
+
+### 成果
+- Git管理下のファイル状態を可視化
+- 未コミット変更の検知
+- コミットハッシュの追跡
+- CopilotがGit状態を理解して行動できる基盤を構築
+
 case 'resolve-conflict': {
   heading: string;
   resolution: 'use-head' | 'use-mcp' | 'manual';

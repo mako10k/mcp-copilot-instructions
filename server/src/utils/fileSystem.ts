@@ -1,6 +1,10 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 /**
  * ファイルの状態を表すインターフェース
@@ -9,6 +13,9 @@ export interface FileState {
   path: string;
   hash: string; // SHA-256ハッシュ値
   timestamp: number; // ファイルの最終更新時刻（ミリ秒）
+  isGitManaged?: boolean; // Git管理下かどうか
+  gitCommit?: string; // Git管理下の場合、現在のコミットハッシュ
+  gitStatus?: string; // Git管理下の場合、ファイルの状態 (modified, untracked等)
 }
 
 /**
@@ -29,6 +36,84 @@ function calculateHash(content: string): string {
 }
 
 /**
+ * ファイルがGit管理下にあるかチェック
+ * @param filePath ファイルのパス
+ * @returns Git管理下の場合true
+ */
+export async function checkGitManaged(filePath: string): Promise<boolean> {
+  try {
+    const dir = path.dirname(filePath);
+    // git rev-parse --is-inside-work-tree でGitリポジトリ内かチェック
+    await execAsync('git rev-parse --is-inside-work-tree', { cwd: dir });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Git管理下のファイルの現在のコミットハッシュを取得
+ * @param filePath ファイルのパス
+ * @returns コミットハッシュ、取得できない場合はundefined
+ */
+export async function getGitCommit(filePath: string): Promise<string | undefined> {
+  try {
+    const dir = path.dirname(filePath);
+    const { stdout } = await execAsync('git rev-parse HEAD', { cwd: dir });
+    return stdout.trim();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Git管理下のファイルのステータスを取得
+ * @param filePath ファイルのパス
+ * @returns ステータス文字列 (modified, untracked, unmodified等)、取得できない場合はundefined
+ */
+export async function getGitStatus(filePath: string): Promise<string | undefined> {
+  try {
+    const dir = path.dirname(filePath);
+    const fileName = path.basename(filePath);
+    const { stdout } = await execAsync(`git status --porcelain "${fileName}"`, { cwd: dir });
+    
+    if (!stdout.trim()) {
+      return 'unmodified';
+    }
+    
+    const statusCode = stdout.substring(0, 2).trim();
+    if (statusCode === 'M' || statusCode.includes('M')) {
+      return 'modified';
+    } else if (statusCode === '??') {
+      return 'untracked';
+    } else if (statusCode === 'A') {
+      return 'added';
+    } else if (statusCode === 'D') {
+      return 'deleted';
+    }
+    return statusCode || 'unknown';
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Git管理下のファイルのdiffを取得
+ * @param filePath ファイルのパス
+ * @returns diff内容、取得できない場合はundefined
+ */
+export async function getGitDiff(filePath: string): Promise<string | undefined> {
+  try {
+    const dir = path.dirname(filePath);
+    const fileName = path.basename(filePath);
+    const { stdout } = await execAsync(`git diff "${fileName}"`, { cwd: dir });
+    return stdout.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * .github/copilot-instructions.md を読み込む
  * @returns 指示書の内容、存在しない場合はnull
  */
@@ -46,22 +131,37 @@ export async function readInstructionsFile(): Promise<string | null> {
 /**
  * ファイルを状態情報付きで読み込む
  * @param filePath ファイルのパス
+ * @param includeGitInfo Git情報を含めるかどうか (デフォルト: true)
  * @returns ファイル内容と状態情報
  */
 export async function readWithState(
-  filePath: string
+  filePath: string,
+  includeGitInfo: boolean = true
 ): Promise<{ content: string; state: FileState }> {
   const content = await fs.readFile(filePath, 'utf-8');
   const stats = await fs.stat(filePath);
   const hash = calculateHash(content);
 
+  const state: FileState = {
+    path: filePath,
+    hash,
+    timestamp: stats.mtimeMs,
+  };
+
+  // Git情報を含める場合
+  if (includeGitInfo) {
+    const isGitManaged = await checkGitManaged(filePath);
+    state.isGitManaged = isGitManaged;
+    
+    if (isGitManaged) {
+      state.gitCommit = await getGitCommit(filePath);
+      state.gitStatus = await getGitStatus(filePath);
+    }
+  }
+
   return {
     content,
-    state: {
-      path: filePath,
-      hash,
-      timestamp: stats.mtimeMs,
-    },
+    state,
   };
 }
 
