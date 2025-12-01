@@ -6,7 +6,10 @@
 			"args": [
 				"ts-node",
 				"server/src/index.ts"
-			]
+			],
+            "dev": {
+                "watch": "server/src/**/*.ts"
+            }
 		}
 	},
 	"inputs": []
