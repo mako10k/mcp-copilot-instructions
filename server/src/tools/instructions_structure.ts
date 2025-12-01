@@ -5,10 +5,10 @@ import {
   resolveConflict,
   deleteSection,
   insertSection,
-} from '../utils/markdownAst';
-import { readInstructionsFileWithState } from '../utils/fileSystem';
-import { withLock } from '../utils/lockManager';
-import { isRestrictedMode } from '../utils/onboardingStatusManager';
+} from '../utils/markdownAst.js';
+import { readInstructionsFileWithState } from '../utils/fileSystem.js';
+import { withLock } from '../utils/lockManager.js';
+import { isRestrictedMode } from '../utils/onboardingStatusManager.js';
 
 interface ReadStructureArgs {
   action: 'read';

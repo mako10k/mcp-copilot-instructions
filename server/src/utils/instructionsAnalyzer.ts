@@ -9,7 +9,7 @@
  * - Section suggestions (for unstructured content)
  */
 
-import { readInstructionsFile } from './fileSystem';
+import { readInstructionsFile } from './fileSystem.js';
 
 /**
  * Analysis result

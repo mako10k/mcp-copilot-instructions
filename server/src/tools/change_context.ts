@@ -1,13 +1,13 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { DevelopmentContext, generateInstructions } from '../utils/generateInstructions';
+import { DevelopmentContext, generateInstructions } from '../utils/generateInstructions.js';
 import { 
   listHistory, 
   getHistoryByTimestamp, 
   calculateDiff,
   cleanupOldHistory,
-} from '../utils/historyManager';
-import { isRestrictedMode } from '../utils/onboardingStatusManager';
+} from '../utils/historyManager.js';
+import { isRestrictedMode } from '../utils/onboardingStatusManager.js';
 
 interface ChangeContextArgs {
   action: 'update' | 'read' | 'reset' | 'rollback' | 'list-history' | 'show-diff' | 'cleanup-history';

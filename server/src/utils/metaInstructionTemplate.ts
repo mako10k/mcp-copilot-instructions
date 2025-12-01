@@ -7,7 +7,7 @@
  * - Provide tool usage guide templates
  */
 
-import { DevelopmentContext } from './generateInstructions';
+import { DevelopmentContext } from './generateInstructions.js';
 
 /**
  * Generate meta-instruction section

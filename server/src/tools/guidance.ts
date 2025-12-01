@@ -1,5 +1,5 @@
-import { readInstructionsFile } from '../utils/fileSystem';
-import { getOnboardingStatus } from '../utils/onboardingStatusManager';
+import { readInstructionsFile } from '../utils/fileSystem.js';
+import { getOnboardingStatus } from '../utils/onboardingStatusManager.js';
 
 export async function guidance({ action }: { action: string }) {
   switch (action) {

@@ -1,10 +1,10 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import matter from 'gray-matter';
-import { calculateHash } from '../utils/fileSystem';
-import { recordHistory } from './historyManager';
-import { generateFullMetaInstruction } from './metaInstructionTemplate';
-import { formatGoalsSection } from './goalStorage';
+import { calculateHash } from '../utils/fileSystem.js';
+import { recordHistory } from './historyManager.js';
+import { generateFullMetaInstruction } from './metaInstructionTemplate.js';
+import { formatGoalsSection } from './goalStorage.js';
 
 /**
  * Development context (state)

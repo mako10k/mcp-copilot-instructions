@@ -15,11 +15,11 @@ import {
   saveOnboardingStatus, 
   OnboardingStatus,
   skipOnboarding
-} from '../utils/onboardingStatusManager';
+} from '../utils/onboardingStatusManager.js';
 import { 
   analyzeInstructions, 
   AnalysisResult 
-} from '../utils/instructionsAnalyzer';
+} from '../utils/instructionsAnalyzer.js';
 
 /**
  * Arguments for onboarding tool

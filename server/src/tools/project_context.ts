@@ -5,7 +5,7 @@ import {
   updateContext,
   deleteContext,
   filterContexts,
-} from '../utils/contextStorage';
+} from '../utils/contextStorage.js';
 
 interface CreateContextArgs {
   action: 'create';
