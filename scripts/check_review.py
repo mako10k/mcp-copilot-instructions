@@ -12,7 +12,7 @@ TARGETS = [
 MAX_AGE_DAYS = 7
 
 ISO_PATTERN = re.compile(
-    r'(作成日|Last Updated)\s*[:：]\s*(\d{4}[-年]\d{2}[-月]\d{2})'
+    r'(Created|Last Updated)\s*:\s*(\d{4}-\d{2}-\d{2})'
 )
 
 
@@ -22,7 +22,6 @@ def get_last_updated(p: Path):
     m = ISO_PATTERN.search(text)
     if m:
         raw = m.group(2)
-        raw = raw.replace('年', '-').replace('月', '-').replace('日', '')
         try:
             dt = datetime.fromisoformat(raw)
             return dt

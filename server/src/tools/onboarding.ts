@@ -113,7 +113,7 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
     case 'clean':
       result += '✅ **Pattern: Clean Installation**\n\n';
       result += 'No instruction file exists. You can create a new one.\n\n';
-      result += '【Next Steps】\n';
+      result += '[Next Steps]\n';
       result += 'You can start using it right away.\n';
       result += '- Use instructions_structure to create and manage instructions\n';
       result += '- Use change_context for dynamic instruction generation\n\n';
@@ -122,29 +122,29 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
       
     case 'structured':
       result += '✅ **Pattern: Structured**\n\n';
-      result += `Detected ${analysis.structured!.sections.length} section(s).\n\n`;
-      result += '【Section List】\n';
+      result += `Detected ${analysis.structured!.sections.length} section(s).\n\n';
+      result += '[Section List]\n';
       analysis.structured!.sections.forEach((s, index) => {
         result += `${index + 1}. **${s.heading}**\n`;
         result += `   - ${s.lineCount} lines (from Line ${s.startLine})\n`;
       });
       result += '\n✓ Compatible with this MCP server.\n';
       result += '✓ Operates in normal mode.\n\n';
-      result += '【Next Steps】\n';
+      result += '[Next Steps]\n';
       result += 'Ready to use. All features are available.';
       break;
       
     case 'unstructured':
       result += '⚠️ **Pattern: Unstructured**\n\n';
-      result += `Total ${analysis.unstructured!.lineCount} lines (${analysis.unstructured!.contentLength} characters)\n\n`;
-      result += '【Current Issues】\n';
+      result += `Total ${analysis.unstructured!.lineCount} lines (${analysis.unstructured!.contentLength} characters)\n\n';
+      result += '[Current Issues]\n';
       result += 'No section structure, difficult to manage.\n\n';
-      result += '【Benefits of Structuring】\n';
+      result += '[Benefits of Structuring]\n';
       result += '- ✅ Section-based updates and management\n';
       result += '- ✅ Conflict detection and auto-resolution\n';
       result += '- ✅ History management and rollback\n';
       result += '- ✅ Dynamic instruction generation (change_context)\n\n';
-      result += '【Suggested Sections】\n';
+      result += '[Suggested Sections]\n';
       analysis.unstructured!.suggestedSections.forEach((s, index) => {
         const conf = Math.round(s.confidence * 100);
         result += `${index + 1}. **${s.heading}** (confidence: ${conf}%)\n`;
@@ -154,7 +154,7 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
       });
       result += '\n⚠️ **Currently in restricted mode**\n';
       result += 'Instruction updates, deletions, and insertions are restricted.\n\n';
-      result += '【Next Steps】\n';
+      result += '[Next Steps]\n';
       result += '1. Review proposal: onboarding({ action: "propose" }) ※Planned for Phase B\n';
       result += '2. Or manually organize and re-analyze\n';
       result += '3. Skip and use in read-only mode: onboarding({ action: "skip" })';
@@ -182,11 +182,11 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
       result += 'Automatic migration is dangerous due to contradictions or duplications.\n\n';
       result += '⚠️ **Currently in restricted mode**\n';
       result += 'Instruction updates, deletions, and insertions are restricted.\n\n';
-      result += '【Next Steps】\n';
+      result += '[Next Steps]\n';
       result += '1. Manually fix the above issues\n';
       result += '2. Re-analyze after fixing: onboarding({ action: "analyze" })\n';
       result += '3. Or skip and use in read-only mode: onboarding({ action: "skip" })\n\n';
-      result += '【Fixing Tips】\n';
+      result += '[Fixing Tips]\n';
       result += '- Contradiction: Confirm which is the latest policy and remove the old one\n';
       result += '- Duplication: Consolidate sections or remove one\n';
       result += '- Ambiguity: Rewrite with clear expressions';
@@ -235,7 +235,7 @@ function formatStatus(status: OnboardingStatus): string {
   
   // Restricted mode details
   if (status.restrictedMode) {
-    result += '【Available Features】\n';
+    result += '[Available Features]\n';
     result += '- ✅ guidance (display guide)\n';
     result += '- ✅ instructions_structure: read (read-only)\n';
     result += '- ✅ instructions_structure: detect-conflicts (conflict detection)\n';
@@ -243,11 +243,11 @@ function formatStatus(status: OnboardingStatus): string {
     result += '- ✅ feedback (feedback recording)\n';
     result += '- ✅ change_context: read/list-history/show-diff (status check only)\n\n';
     
-    result += '【Restricted Features】\n';
+    result += '[Restricted Features]\n';
     result += '- ❌ instructions_structure: update/delete/insert\n';
     result += '- ❌ change_context: update/reset/rollback (operations that modify instructions)\n\n';
     
-    result += '【How to Lift Restrictions】\n';
+    result += '[How to Lift Restrictions]\n';
     if (status.pattern === 'unstructured') {
       result += '- Review migration proposal: onboarding({ action: "propose" }) ※Planned for Phase B\n';
       result += '- Or manually organize and re-analyze: onboarding({ action: "analyze" })\n';
@@ -262,7 +262,7 @@ function formatStatus(status: OnboardingStatus): string {
   
   // Rollback information
   if (status.canRollback && status.backupPath && status.rollbackUntil) {
-    result += '\n【Rollback】\n';
+    result += '\n[Rollback]\n';
     const rollbackDate = new Date(status.rollbackUntil);
     result += `Deadline: ${rollbackDate.toLocaleString('en-US')}\n`;
     result += `Backup: ${status.backupPath}\n`;
@@ -271,7 +271,7 @@ function formatStatus(status: OnboardingStatus): string {
   
   // Problem summary
   if (status.problems && status.problems.length > 0) {
-    result += '\n【Detected Issues】\n';
+    result += '\n[Detected Issues]\n';
     status.problems.forEach((p, index) => {
       result += `${index + 1}. ${p.description} (${p.locations.length} location(s))\n`;
     });

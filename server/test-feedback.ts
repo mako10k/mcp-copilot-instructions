@@ -1,44 +1,44 @@
 import { feedback } from './src/tools/feedback';
 
 async function main() {
-  console.log('=== feedbackツールのテスト ===\n');
+  console.log('=== Testing feedback tool ===\n');
 
-  // Test 1: 初期状態の確認（フラグなし）
-  console.log('Test 1: 初期状態の確認（フラグ付き指示を一覧表示）');
+  // Test 1: Check initial state (no flags)
+  console.log('Test 1: Check initial state (list flagged instructions)');
   const listResult1 = await feedback({ action: 'list' });
   console.log(listResult1);
   console.log('\n---\n');
 
-  // Test 2: criticalFeedbackフラグを追加
-  console.log('Test 2: TypeScript規約にcriticalFeedbackフラグを追加');
+  // Test 2: Add criticalFeedback flag
+  console.log('Test 2: Add criticalFeedback flag to TypeScript conventions');
   const addResult1 = await feedback({
     action: 'add',
     filePath: 'conventions/typescript.md',
     flagType: 'criticalFeedback',
-    reason: '型安全性の重要性を強調するため',
+    reason: 'To emphasize importance of type safety',
   });
   console.log(addResult1);
   console.log('\n---\n');
 
-  // Test 3: copilotEssentialフラグを追加
-  console.log('Test 3: エラーハンドリングパターンにcopilotEssentialフラグを追加');
+  // Test 3: Add copilotEssential flag
+  console.log('Test 3: Add copilotEssential flag to error handling pattern');
   const addResult2 = await feedback({
     action: 'add',
     filePath: 'patterns/error-handling.md',
     flagType: 'copilotEssential',
-    reason: 'エラー処理は常に重要と判断',
+    reason: 'Error handling is always important',
   });
   console.log(addResult2);
   console.log('\n---\n');
 
-  // Test 4: フラグ付き指示を一覧表示
-  console.log('Test 4: フラグ付き指示を一覧表示');
+  // Test 4: List flagged instructions
+  console.log('Test 4: List flagged instructions');
   const listResult2 = await feedback({ action: 'list' });
   console.log(listResult2);
   console.log('\n---\n');
 
-  // Test 5: criticalFeedbackのみをフィルタ
-  console.log('Test 5: criticalFeedbackのみをフィルタ');
+  // Test 5: Filter criticalFeedback only
+  console.log('Test 5: Filter criticalFeedback only');
   const listResult3 = await feedback({
     action: 'list',
     filter: 'criticalFeedback',
@@ -46,8 +46,8 @@ async function main() {
   console.log(listResult3);
   console.log('\n---\n');
 
-  // Test 6: copilotEssentialのみをフィルタ
-  console.log('Test 6: copilotEssentialのみをフィルタ');
+  // Test 6: Filter copilotEssential only
+  console.log('Test 6: Filter copilotEssential only');
   const listResult4 = await feedback({
     action: 'list',
     filter: 'copilotEssential',
@@ -55,8 +55,8 @@ async function main() {
   console.log(listResult4);
   console.log('\n---\n');
 
-  // Test 7: フラグを削除
-  console.log('Test 7: TypeScript規約のcriticalFeedbackフラグを削除');
+  // Test 7: Remove flag
+  console.log('Test 7: Remove criticalFeedback flag from TypeScript conventions');
   const removeResult = await feedback({
     action: 'remove',
     filePath: 'conventions/typescript.md',
@@ -65,14 +65,14 @@ async function main() {
   console.log(removeResult);
   console.log('\n---\n');
 
-  // Test 8: 削除後の状態確認
-  console.log('Test 8: 削除後の状態確認');
+  // Test 8: Check state after deletion
+  console.log('Test 8: Check state after deletion');
   const listResult5 = await feedback({ action: 'list' });
   console.log(listResult5);
   console.log('\n---\n');
 
-  // Test 9: もう一つのフラグも削除（クリーンアップ）
-  console.log('Test 9: エラーハンドリングのcopilotEssentialフラグを削除（クリーンアップ）');
+  // Test 9: Remove another flag (cleanup)
+  console.log('Test 9: Remove copilotEssential flag from error handling (cleanup)');
   const removeResult2 = await feedback({
     action: 'remove',
     filePath: 'patterns/error-handling.md',
@@ -81,54 +81,54 @@ async function main() {
   console.log(removeResult2);
   console.log('\n---\n');
 
-  // Test 10: 最終状態確認
-  console.log('Test 10: 最終状態確認（すべてクリア）');
+  // Test 10: Check final state
+  console.log('Test 10: Check final state (all cleared)');
   const listResult6 = await feedback({ action: 'list' });
   console.log(listResult6);
   console.log('\n---\n');
 
-  // Test 11: ソフトリミットテスト（criticalFeedback）
-  console.log('Test 11: ソフトリミットテスト - criticalFeedback 2個追加');
+  // Test 11: Soft limit test (criticalFeedback)
+  console.log('Test 11: Soft limit test - add 2 criticalFeedback flags');
   await feedback({
     action: 'add',
     filePath: 'conventions/typescript.md',
     flagType: 'criticalFeedback',
-    reason: 'テスト1',
+    reason: 'Test 1',
   });
   await feedback({
     action: 'add',
     filePath: 'patterns/error-handling.md',
     flagType: 'criticalFeedback',
-    reason: 'テスト2',
+    reason: 'Test 2',
   });
   const listResult7 = await feedback({ action: 'list' });
   console.log(listResult7);
   console.log('\n---\n');
 
-  // Test 12: ソフトリミット到達時の警告確認
-  console.log('Test 12: 3個目追加でソフトリミット警告表示');
+  // Test 12: Check soft limit warning
+  console.log('Test 12: Add 3rd item to display soft limit warning');
   const addResult3 = await feedback({
     action: 'add',
     filePath: 'architecture/api-design.md',
     flagType: 'criticalFeedback',
-    reason: 'テスト3（ソフトリミット到達）',
+    reason: 'Test 3 (soft limit reached)',
   });
   console.log(addResult3);
   console.log('\n---\n');
 
-  // Test 13: ハードリミット到達時のエラー確認
-  console.log('Test 13: 4個目追加でハードリミットエラー');
+  // Test 13: Check hard limit error
+  console.log('Test 13: Add 4th item to trigger hard limit error');
   const addResult4 = await feedback({
     action: 'add',
     filePath: 'patterns/testing.md',
     flagType: 'criticalFeedback',
-    reason: 'テスト4（ハードリミット超過）',
+    reason: 'Test 4 (hard limit exceeded)',
   });
   console.log(addResult4);
   console.log('\n---\n');
 
-  // Test 14: クリーンアップ
-  console.log('Test 14: テストデータをクリーンアップ');
+  // Test 14: Cleanup
+  console.log('Test 14: Cleanup test data');
   await feedback({
     action: 'remove',
     filePath: 'conventions/typescript.md',
@@ -148,7 +148,7 @@ async function main() {
   console.log(listResult8);
   console.log('\n---\n');
 
-  console.log('すべてのテストが完了しました。');
+  console.log('All tests completed successfully.');
 }
 
 main().catch((error) => {
