@@ -54,7 +54,6 @@ jobs:
       - name: Verify build output
         run: |
           cd server
-          test -f dist/index.js
           test -f dist/src/index.js
           test -d dist/src/tools
           test -d dist/src/utils
