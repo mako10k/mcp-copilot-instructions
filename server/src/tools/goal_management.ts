@@ -333,6 +333,225 @@ async function updateGoal(params: GoalManagementParams): Promise<GoalManagementR
 }
 
 /**
+ * Update current context (path, recent, upcoming, blocked)
+ */
+async function updateCurrentContext(goalId: string): Promise<void> {
+  const hierarchy = await readHierarchy();
+  if (!hierarchy) return;
+  
+  const context = await readCurrentContext();
+  if (!context) return;
+  
+  // Update current goal
+  context.currentGoalId = goalId;
+  
+  // Recalculate path
+  context.currentPath = calculatePath(goalId, hierarchy.goals);
+  
+  // Update upcoming goals (next siblings and children)
+  const currentGoal = hierarchy.goals[goalId];
+  if (currentGoal) {
+    const siblings = getSiblings(currentGoal, hierarchy.goals);
+    context.upcomingGoals = [];
+    
+    if (siblings.next) {
+      context.upcomingGoals.push(siblings.next.id);
+    }
+    
+    // Add not-started children
+    currentGoal.childIds.forEach(childId => {
+      const child = hierarchy.goals[childId];
+      if (child && child.status === 'not-started') {
+        context.upcomingGoals.push(childId);
+      }
+    });
+  }
+  
+  // Update blocked goals
+  context.blockedGoals = Object.values(hierarchy.goals)
+    .filter(g => g.status === 'blocked')
+    .map(g => g.id);
+  
+  await writeCurrentContext(context);
+}
+
+/**
+ * Find next goal to advance to
+ */
+function findNextGoal(currentGoal: Goal, goals: Record<string, Goal>): Goal | null {
+  // 1. First not-started child
+  for (const childId of currentGoal.childIds) {
+    const child = goals[childId];
+    if (child && child.status === 'not-started') {
+      return child;
+    }
+  }
+  
+  // 2. First in-progress child
+  for (const childId of currentGoal.childIds) {
+    const child = goals[childId];
+    if (child && child.status === 'in-progress') {
+      return child;
+    }
+  }
+  
+  // 3. Next sibling
+  const siblings = getSiblings(currentGoal, goals);
+  if (siblings.next && siblings.next.status !== 'completed') {
+    return siblings.next;
+  }
+  
+  // 4. Move up to parent and try its next sibling
+  if (currentGoal.parentId) {
+    const parent = goals[currentGoal.parentId];
+    if (parent) {
+      const parentSiblings = getSiblings(parent, goals);
+      if (parentSiblings.next && parentSiblings.next.status !== 'completed') {
+        return parentSiblings.next;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Complete a goal and auto-advance
+ */
+async function completeGoal(params: GoalManagementParams): Promise<GoalManagementResult> {
+  if (!params.goalId) {
+    return {
+      success: false,
+      message: 'goalId is required for complete action',
+      error: 'Missing goalId parameter'
+    };
+  }
+  
+  const hierarchy = await readHierarchy();
+  if (!hierarchy) {
+    return {
+      success: false,
+      message: 'Goals not initialized',
+      error: 'Hierarchy file missing'
+    };
+  }
+  
+  const goal = hierarchy.goals[params.goalId];
+  if (!goal) {
+    return {
+      success: false,
+      message: `Goal ${params.goalId} not found`,
+      error: 'Invalid goal ID'
+    };
+  }
+  
+  if (goal.status === 'completed') {
+    return {
+      success: false,
+      message: `Goal ${params.goalId} already completed`,
+      error: 'Already completed'
+    };
+  }
+  
+  // Mark as completed
+  const now = new Date().toISOString();
+  goal.status = 'completed';
+  goal.completedAt = now;
+  goal.updatedAt = now;
+  
+  await writeHierarchy(hierarchy);
+  
+  // Update context - add to recently completed
+  const context = await readCurrentContext();
+  if (context) {
+    context.recentlyCompleted.unshift(params.goalId);
+    context.recentlyCompleted = context.recentlyCompleted.slice(0, 5); // Keep max 5
+    
+    // Auto-advance if this was current goal
+    if (context.currentGoalId === params.goalId) {
+      const nextGoal = findNextGoal(goal, hierarchy.goals);
+      if (nextGoal) {
+        context.currentGoalId = nextGoal.id;
+        context.currentPath = calculatePath(nextGoal.id, hierarchy.goals);
+        
+        // Start the next goal if it's not-started
+        if (nextGoal.status === 'not-started') {
+          nextGoal.status = 'in-progress';
+          nextGoal.updatedAt = now;
+          await writeHierarchy(hierarchy);
+        }
+      }
+    }
+    
+    await writeCurrentContext(context);
+  }
+  
+  return {
+    success: true,
+    message: `Goal ${params.goalId} completed and advanced to next goal`,
+    goal,
+    currentContext: context ?? undefined
+  };
+}
+
+/**
+ * Manually advance to specific goal
+ */
+async function advanceGoal(params: GoalManagementParams): Promise<GoalManagementResult> {
+  if (!params.goalId) {
+    return {
+      success: false,
+      message: 'goalId is required for advance action',
+      error: 'Missing goalId parameter'
+    };
+  }
+  
+  const hierarchy = await readHierarchy();
+  if (!hierarchy) {
+    return {
+      success: false,
+      message: 'Goals not initialized',
+      error: 'Hierarchy file missing'
+    };
+  }
+  
+  const goal = hierarchy.goals[params.goalId];
+  if (!goal) {
+    return {
+      success: false,
+      message: `Goal ${params.goalId} not found`,
+      error: 'Invalid goal ID'
+    };
+  }
+  
+  // Set as current
+  await updateCurrentContext(params.goalId);
+  
+  // Start if not-started
+  if (goal.status === 'not-started') {
+    goal.status = 'in-progress';
+    goal.updatedAt = new Date().toISOString();
+    await writeHierarchy(hierarchy);
+  }
+  
+  const context = await readCurrentContext();
+  
+  return {
+    success: true,
+    message: `Advanced to goal ${params.goalId}`,
+    goal,
+    currentContext: context ?? undefined
+  };
+}
+
+/**
+ * Set current goal (alias for advance)
+ */
+async function setCurrentGoal(params: GoalManagementParams): Promise<GoalManagementResult> {
+  return await advanceGoal(params);
+}
+
+/**
  * Get filtered context for display
  */
 async function getContext(): Promise<GoalManagementResult> {
@@ -454,15 +673,14 @@ export async function handleGoalManagement(params: unknown): Promise<GoalManagem
       case 'get-context':
         return await getContext();
       
-      // TODO: Implement remaining actions in Step 4
       case 'complete':
+        return await completeGoal(validated);
+      
       case 'advance':
+        return await advanceGoal(validated);
+      
       case 'set-current':
-        return {
-          success: false,
-          message: `Action ${validated.action} not yet implemented`,
-          error: 'Not implemented'
-        };
+        return await setCurrentGoal(validated);
       
       default:
         return {
