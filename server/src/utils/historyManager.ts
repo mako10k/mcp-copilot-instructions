@@ -3,10 +3,10 @@ import * as path from 'path';
 import { DevelopmentContext } from './generateInstructions';
 
 /**
- * 履歴エントリ
+ * History entry
  */
 export interface HistoryEntry {
-  timestamp: string;  // ISO 8601形式
+  timestamp: string;  // ISO 8601 format
   context: DevelopmentContext;
   generatedHash: string;
   sectionsCount: number;
@@ -14,14 +14,14 @@ export interface HistoryEntry {
 }
 
 /**
- * 履歴の詳細情報
+ * History detail information
  */
 export interface HistoryDetail extends HistoryEntry {
-  generatedContent: string;  // 実際に生成された内容
+  generatedContent: string;  // Actually generated content
 }
 
 /**
- * 履歴ディレクトリのパス
+ * Get history directory path
  */
 function getHistoryDir(): string {
   const workspaceRoot = path.resolve(__dirname, '../../../');
@@ -29,7 +29,7 @@ function getHistoryDir(): string {
 }
 
 /**
- * 履歴を記録
+ * Record history
  */
 export async function recordHistory(
   context: DevelopmentContext,
@@ -39,7 +39,7 @@ export async function recordHistory(
 ): Promise<HistoryEntry> {
   const historyDir = getHistoryDir();
   
-  // ディレクトリを作成（存在しない場合）
+  // Create directory if it doesn't exist
   await fs.mkdir(historyDir, { recursive: true });
   
   const timestamp = new Date().toISOString();
@@ -67,7 +67,7 @@ export async function recordHistory(
 }
 
 /**
- * 履歴一覧を取得（新しい順）
+ * Get history list (newest first)
  */
 export async function listHistory(limit?: number): Promise<HistoryEntry[]> {
   const historyDir = getHistoryDir();
@@ -76,7 +76,7 @@ export async function listHistory(limit?: number): Promise<HistoryEntry[]> {
     const files = await fs.readdir(historyDir);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
     
-    // 新しい順にソート
+    // Sort newest first
     jsonFiles.sort().reverse();
     
     const entries: HistoryEntry[] = [];

@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 /**
- * ロック情報
+ * Lock information
  */
 interface LockInfo {
   sessionId: string;
@@ -11,11 +11,11 @@ interface LockInfo {
 }
 
 const LOCK_FILE = '.copilot-state/.lock';
-const LOCK_TIMEOUT_MS = 5000; // 5秒
+const LOCK_TIMEOUT_MS = 5000; // 5 seconds
 const RETRY_INTERVAL_MS = 100; // 100ms
 
 /**
- * ロックファイルのパスを取得
+ * Get lock file path
  */
 function getLockFilePath(): string {
   const workspaceRoot = path.resolve(__dirname, '../../../');
@@ -23,32 +23,32 @@ function getLockFilePath(): string {
 }
 
 /**
- * セッションIDを生成（プロセスID + タイムスタンプ）
+ * Generate session ID (process ID + timestamp)
  */
 function generateSessionId(): string {
   return `${process.pid}-${Date.now()}`;
 }
 
 /**
- * ロックを取得
- * @param timeoutMs タイムアウト時間（ミリ秒）
- * @returns 成功時はsessionId、失敗時はnull
+ * Acquire lock
+ * @param timeoutMs Timeout duration (milliseconds)
+ * @returns sessionId on success, null on failure
  */
 export async function acquireLock(timeoutMs: number = LOCK_TIMEOUT_MS): Promise<string | null> {
   const sessionId = generateSessionId();
   const lockPath = getLockFilePath();
   const startTime = Date.now();
   
-  // ディレクトリが存在しない場合は作成
+  // Create directory if it doesn't exist
   await fs.mkdir(path.dirname(lockPath), { recursive: true });
   
   while (Date.now() - startTime < timeoutMs) {
     try {
-      // ロックファイルが存在するか確認
+      // Check if lock file exists
       const exists = await fs.access(lockPath).then(() => true).catch(() => false);
       
       if (!exists) {
-        // ロックファイルが無い場合は作成して取得成功
+        // No lock file, create and acquire successfully
         const lockInfo: LockInfo = {
           sessionId,
           acquiredAt: Date.now(),
