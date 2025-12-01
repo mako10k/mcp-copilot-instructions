@@ -1,18 +1,18 @@
 /**
  * instructionsAnalyzer.ts
- * 既存指示書の分析ロジック
+ * Existing instructions analysis logic
  * 
- * 責務:
- * - 指示書の存在確認
- * - パターン分類（clean/structured/unstructured/messy）
- * - 問題検出（矛盾・重複）
- * - セクション提案（非構造化コンテンツ向け）
+ * Responsibilities:
+ * - Check instructions existence
+ * - Pattern classification (clean/structured/unstructured/messy)
+ * - Problem detection (contradictions/duplications)
+ * - Section suggestions (for unstructured content)
  */
 
 import { readInstructionsFile } from './fileSystem';
 
 /**
- * 分析結果
+ * Analysis result
  */
 export interface AnalysisResult {
   exists: boolean;
@@ -48,7 +48,7 @@ export interface AnalysisResult {
 }
 
 /**
- * セクション情報
+ * Section information
  */
 interface Section {
   heading: string;
@@ -58,26 +58,26 @@ interface Section {
 }
 
 /**
- * 既存指示書を分析
+ * Analyze existing instructions
  */
 export async function analyzeInstructions(): Promise<AnalysisResult> {
   const content = await readInstructionsFile();
   
-  // パターン1: 指示書が存在しない（クリーン）
+  // Pattern 1: No instructions (clean)
   if (!content) {
     return {
       exists: false,
       pattern: 'clean',
-      recommendation: '新規作成できます。そのまま利用を開始してください。'
+      recommendation: 'Can create new. Start using as is.'
     };
   }
   
   const lines = content.split('\n');
   
-  // まず問題検出（パターン2,4共通で必要）
+  // Detect problems first (common for patterns 2 and 4)
   const problems = detectProblems(content, lines);
   
-  // パターン2 or 4: 構造化済み（## セクション形式）
+  // Pattern 2 or 4: Structured (## section format)
   const sections = extractSections(content);
   if (sections.length > 0) {
     // 問題がある場合はパターン4（messy）
@@ -142,9 +142,9 @@ export async function analyzeInstructions(): Promise<AnalysisResult> {
 }
 
 /**
- * セクション抽出（## で始まる行）
+ * Extract sections (lines starting with ##)
  * 
- * 構造化済みの指示書から既存セクションを抽出
+ * Extract existing sections from structured instructions
  */
 export function extractSections(content: string): Section[] {
   const lines = content.split('\n');
@@ -154,7 +154,7 @@ export function extractSections(content: string): Section[] {
   lines.forEach((line, index) => {
     const match = line.match(/^## (.+)$/);
     if (match) {
-      // 前のセクションを保存
+      // Save previous section
       if (currentSection) {
         (currentSection as Section).content = (currentSection as Section).lines.join('\n').trim();
         sections.push(currentSection as Section);
@@ -181,9 +181,9 @@ export function extractSections(content: string): Section[] {
 }
 
 /**
- * 問題検出（矛盾・重複）
+ * Detect problems (contradictions/duplications)
  * 
- * めちゃくちゃな状態の指示書から問題を検出
+ * Detect problems from messy instructions
  */
 type Problem = {
   type: 'contradiction' | 'duplication' | 'unclear';
@@ -197,7 +197,7 @@ export function detectProblems(
 ): Problem[] {
   const problems: Problem[] = [];
   
-  // 1. 重複セクション検出
+  // 1. Detect duplicate sections
   const headings = new Map<string, number[]>();
   lines.forEach((line, index) => {
     const match = line.match(/^## (.+)$/);
@@ -223,7 +223,7 @@ export function detectProblems(
     }
   });
   
-  // 2. 矛盾検出（シンプルなキーワードベース）
+  // 2. Detect contradictions (simple keyword-based)
   const contradictionPatterns = [
     { 
       positive: /any.*禁止|anyを?使わない|any.*NG|any.*避ける/i, 

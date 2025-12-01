@@ -7,14 +7,14 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 /**
- * Git コマンドの利用可否状態
- * undefined: 未チェック, true: 利用可能, false: 利用不可
+ * Git command availability state
+ * undefined: not checked, true: available, false: unavailable
  */
 let gitAvailable: boolean | undefined = undefined;
 
 /**
- * Git コマンドが利用可能かチェック
- * 初回呼び出し時に検証し、結果をキャッシュ
+ * Check if Git command is available
+ * Validates on first call and caches result
  */
 async function checkGitAvailable(): Promise<boolean> {
   if (gitAvailable !== undefined) {
@@ -24,29 +24,29 @@ async function checkGitAvailable(): Promise<boolean> {
   try {
     await execAsync('git --version');
     gitAvailable = true;
-    console.log('[fileSystem] Git コマンド利用可能');
+    console.log('[fileSystem] Git command available');
   } catch {
     gitAvailable = false;
-    console.warn('[fileSystem] Git コマンドが見つかりません。デグレードモードで動作します。');
+    console.warn('[fileSystem] Git command not found. Operating in degraded mode.');
   }
 
   return gitAvailable;
 }
 
 /**
- * ファイルの状態を表すインターフェース
+ * File state interface
  */
 export interface FileState {
   path: string;
-  hash: string; // SHA-256ハッシュ値
-  timestamp: number; // ファイルの最終更新時刻（ミリ秒）
-  isGitManaged?: boolean; // Git管理下かどうか
-  gitCommit?: string; // Git管理下の場合、現在のコミットハッシュ
-  gitStatus?: string; // Git管理下の場合、ファイルの状態 (modified, untracked等)
+  hash: string; // SHA-256 hash value
+  timestamp: number; // File last modified time (milliseconds)
+  isGitManaged?: boolean; // Whether under Git management
+  gitCommit?: string; // Current commit hash if under Git management
+  gitStatus?: string; // File status if under Git management (modified, untracked, etc.)
 }
 
 /**
- * 競合情報を表すインターフェース
+ * Conflict information interface
  */
 export interface ConflictInfo {
   message: string;
@@ -56,19 +56,19 @@ export interface ConflictInfo {
 }
 
 /**
- * SHA-256ハッシュ値を計算
+ * Calculate SHA-256 hash value
  */
 export function calculateHash(content: string): string {
   return crypto.createHash('sha256').update(content, 'utf-8').digest('hex');
 }
 
 /**
- * ファイルがGit管理下にあるかチェック
- * @param filePath ファイルのパス
- * @returns Git管理下の場合true
+ * Check if file is under Git management
+ * @param filePath File path
+ * @returns true if under Git management
  */
 export async function checkGitManaged(filePath: string): Promise<boolean> {
-  // Git コマンドが利用不可の場合は false を返す
+  // Return false if Git command is unavailable
   if (!(await checkGitAvailable())) {
     return false;
   }
@@ -161,11 +161,11 @@ export async function getGitDiff(filePath: string): Promise<string | undefined> 
 }
 
 /**
- * .github/copilot-instructions.md を読み込む
- * @returns 指示書の内容、存在しない場合はnull
+ * Read .github/copilot-instructions.md
+ * @returns Instructions content, null if doesn't exist
  */
 export async function readInstructionsFile(): Promise<string | null> {
-  // __dirnameから相対的にワークスペースルートを解決
+  // Resolve workspace root relative to __dirname
   const workspaceRoot = path.resolve(__dirname, '../../../');
   const filePath = path.join(workspaceRoot, '.github/copilot-instructions.md');
   try {
@@ -176,10 +176,10 @@ export async function readInstructionsFile(): Promise<string | null> {
 }
 
 /**
- * ファイルを状態情報付きで読み込む
- * @param filePath ファイルのパス
- * @param includeGitInfo Git情報を含めるかどうか (デフォルト: true)
- * @returns ファイル内容と状態情報
+ * Read file with state information
+ * @param filePath File path
+ * @param includeGitInfo Whether to include Git info (default: true)
+ * @returns File content and state information
  */
 export async function readWithState(
   filePath: string,
@@ -231,11 +231,11 @@ export async function readInstructionsFileWithState(): Promise<{
 }
 
 /**
- * 競合チェック付きでファイルに書き込む
- * @param filePath ファイルのパス
- * @param content 書き込む内容
- * @param expectedState 期待されるファイル状態
- * @returns 成功時はsuccess: true、競合時はsuccess: falseとconflict情報
+ * Write to file with conflict check
+ * @param filePath File path
+ * @param content Content to write
+ * @param expectedState Expected file state
+ * @returns success: true on success, success: false with conflict info on conflict
  */
 export async function writeWithConflictCheck(
   filePath: string,
@@ -243,10 +243,10 @@ export async function writeWithConflictCheck(
   expectedState: FileState
 ): Promise<{ success: boolean; conflict?: ConflictInfo }> {
   try {
-    // 現在のファイル状態を取得
+    // Get current file state
     const current = await readWithState(filePath);
 
-    // ハッシュ値を比較して外部変更を検知
+    // Detect external changes by comparing hash values
     if (current.state.hash !== expectedState.hash) {
       return {
         success: false,
