@@ -1,0 +1,20 @@
+name: Weekly Review Check
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Every Monday 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Run review freshness check
+        run: |
+          python scripts/check_review.py
