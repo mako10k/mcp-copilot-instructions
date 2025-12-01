@@ -58,6 +58,17 @@
   - タイムスタンプまたはインデックス指定でロールバック
   - 30日以上の古い履歴を自動削除
 
+### ✅ PBI-004 (Medium): feedbackツールの設計
+- **AC**: feedbackツール実装、criticalFeedback/copilotEssentialフラグ対応
+- **完了日**: 2025年12月1日
+- **関連**: Scenario 10
+- **実装内容**:
+  - `feedback` ツール実装（add/remove/list）
+  - criticalFeedback（人間の強い指摘、+500点）
+  - copilotEssential（LLMの重要判断、+300点）
+  - フロントマター自動更新
+  - スコアリングアルゴリズムとの自動連携
+
 ---
 
 ## 🔴 Critical Priority (Phase 2)
@@ -314,26 +325,6 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 ---
 
 ## 🟡 Medium Priority (Phase 3)
-
-### PBI-004: feedback ツールの設計
-
-**カテゴリ**: API Design / Terminology  
-**優先度**: 🟡 Medium  
-**登録日**: 2025年12月1日  
-**エピック**: E5  
-**関連ストーリー**: S5
-
-#### 概要
-
-用語の明確化のため、`user_feedback`を`developer_feedback`に改名し、Copilot自身の観察を記録する`copilot_observation`ツールを追加。
-
-#### 要件
-
-- `user_feedback` → `developer_feedback`
-- `copilot_observation`ツール新設
-- 既存データの移行スクリプト
-
----
 
 ### PBI-005: サマリー表示のカスタマイズ
 

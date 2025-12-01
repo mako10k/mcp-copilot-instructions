@@ -1,9 +1,14 @@
 ---
 category: patterns
-tags: [error, exception, handling]
+tags:
+  - error
+  - exception
+  - handling
 priority: high
 required: false
-phases: [development, debugging]
+phases:
+  - development
+  - debugging
 ---
 
 # エラーハンドリングパターン

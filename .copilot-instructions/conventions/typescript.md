@@ -1,9 +1,16 @@
 ---
 category: conventions
-tags: [typescript, coding-style, essential]
+tags:
+  - typescript
+  - coding-style
+  - essential
 priority: high
 required: true
-phases: [development, refactoring, testing, debugging]
+phases:
+  - development
+  - refactoring
+  - testing
+  - debugging
 ---
 
 # TypeScript コーディング規約

@@ -8,6 +8,7 @@ import { guidance } from './tools/guidance';
 import { projectContext } from './tools/project_context';
 import { instructionsStructure } from './tools/instructions_structure';
 import { changeContext } from './tools/change_context';
+import { feedback } from './tools/feedback';
 
 const server = new Server(
   {
@@ -205,6 +206,44 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['action'],
         },
       },
+      {
+        name: 'feedback',
+        description:
+          '指示書に対する重要なフィードバックを記録。' +
+          '人間開発者の明示的な指摘（criticalFeedback）または' +
+          'LLMが自律的に重要と判断した内容（copilotEssential）をフラグ設定。',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['add', 'remove', 'list'],
+              description: 'アクション: add(フラグ追加) / remove(フラグ削除) / list(一覧表示)',
+            },
+            filePath: {
+              type: 'string',
+              description: '対象ファイルの相対パス（例: "conventions/typescript.md"、add/removeの場合必須）',
+            },
+            flagType: {
+              type: 'string',
+              enum: ['criticalFeedback', 'copilotEssential'],
+              description:
+                'フラグタイプ（add/removeの場合必須）: ' +
+                'criticalFeedback(人間の強い指摘) / copilotEssential(LLMの重要判断)',
+            },
+            reason: {
+              type: 'string',
+              description: 'フラグを設定する理由（addの場合推奨）',
+            },
+            filter: {
+              type: 'string',
+              enum: ['all', 'criticalFeedback', 'copilotEssential'],
+              description: 'フィルタ（listの場合、デフォルト: all）',
+            },
+          },
+          required: ['action'],
+        },
+      },
     ],
   };
 });
@@ -242,6 +281,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case 'instructions_structure': {
         const result = await instructionsStructure(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+      case 'feedback': {
+        const result = await feedback(args as any);
         return {
           content: [{ type: 'text', text: result }],
         };

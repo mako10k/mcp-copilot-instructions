@@ -1405,3 +1405,193 @@ change_context({
 - [x] 差分表示機能
 - [x] 古い履歴の自動クリーンアップ
 
+
+---
+
+## シナリオ10: feedbackツール（Phase 3）
+
+**日付**: 2025年12月1日  
+**目的**: 重要な指示を明示的に強調するfeedbackツールの実装
+
+### 課題背景
+- 動的指示書生成では、スコアリングアルゴリズムで関連指示を抽出
+- しかし、「この指示は特に重要」という人間の判断やLLMの観察を反映する仕組みがない
+- criticalFeedback（500点）、copilotEssential（300点）フラグは既に存在するが、設定手段がない
+
+### 実装内容
+
+#### 1. feedbackツール (`server/src/tools/feedback.ts`)
+
+**3つのアクション**:
+- `add`: 指示ファイルのフロントマターにフラグを追加
+- `remove`: フラグを削除
+- `list`: フラグ付き指示を一覧表示（フィルタ可能）
+
+**2つのフラグタイプ**:
+- `criticalFeedback`: 人間開発者の明示的な強い指摘（+500点）
+- `copilotEssential`: LLMが自律的に「これは重要」と判断（+300点）
+
+**パラメータ**:
+```typescript
+{
+  action: "add" | "remove" | "list",
+  // add/remove用
+  filePath?: string,  // 例: "conventions/typescript.md"
+  flagType?: "criticalFeedback" | "copilotEssential",
+  reason?: string,     // 理由（推奨）
+  // list用
+  filter?: "all" | "criticalFeedback" | "copilotEssential"
+}
+```
+
+#### 2. フロントマター更新
+
+```yaml
+---
+category: conventions
+tags: [typescript, coding-style]
+priority: high
+required: true
+criticalFeedback: true  # feedbackツールで追加
+criticalFeedbackReason: "型安全性の重要性を強調するため"
+---
+```
+
+#### 3. スコアリングアルゴリズムとの連携
+
+既存のスコアリングルール（`.copilot-state/scoring-rules.json`）:
+```json
+{
+  "rules": {
+    "criticalFeedback": 500,
+    "copilotEssential": 300,
+    ...
+  }
+}
+```
+
+フラグが設定された指示は、動的生成時に自動的に高スコアを獲得し、優先的に抽出される。
+
+### テスト結果
+
+**テスト1: 初期状態確認**
+```json
+{
+  "success": true,
+  "count": 0,
+  "feedbacks": []
+}
+```
+
+**テスト2: criticalFeedbackフラグ追加**
+```json
+{
+  "success": true,
+  "action": "add",
+  "filePath": "conventions/typescript.md",
+  "flagType": "criticalFeedback",
+  "reason": "型安全性の重要性を強調するため"
+}
+```
+
+**テスト3: copilotEssentialフラグ追加**
+```json
+{
+  "success": true,
+  "action": "add",
+  "filePath": "patterns/error-handling.md",
+  "flagType": "copilotEssential",
+  "reason": "エラー処理は常に重要と判断"
+}
+```
+
+**テスト4: フラグ付き指示を一覧表示**
+```json
+{
+  "success": true,
+  "count": 2,
+  "feedbacks": [
+    {
+      "filePath": "conventions/typescript.md",
+      "category": "conventions",
+      "flags": {
+        "criticalFeedback": true,
+        "copilotEssential": false
+      },
+      "reason": "型安全性の重要性を強調するため"
+    },
+    {
+      "filePath": "patterns/error-handling.md",
+      "category": "patterns",
+      "flags": {
+        "criticalFeedback": false,
+        "copilotEssential": true
+      },
+      "reason": "エラー処理は常に重要と判断"
+    }
+  ]
+}
+```
+
+**テスト5: criticalFeedbackフィルタ**
+- 1件抽出（conventions/typescript.md）✓
+
+**テスト6: copilotEssentialフィルタ**
+- 1件抽出（patterns/error-handling.md）✓
+
+**テスト7-10: フラグ削除とクリーンアップ**
+- すべて正常に削除 ✓
+
+### 実装ファイル
+- `server/src/tools/feedback.ts`: feedbackツール実装（新規、170行）
+- `server/src/index.ts`: ツール登録
+- `server/test-feedback.ts`: テストスクリプト（10シナリオ）
+
+### 使用例
+
+```typescript
+// 人間開発者: 重要な指示にcriticalFeedbackフラグ
+feedback({
+  action: "add",
+  filePath: "conventions/typescript.md",
+  flagType: "criticalFeedback",
+  reason: "型安全性の徹底は最優先事項"
+})
+
+// LLM: 自身で重要と判断した指示にcopilotEssentialフラグ
+feedback({
+  action: "add",
+  filePath: "patterns/error-handling.md",
+  flagType: "copilotEssential",
+  reason: "エラー処理パターンは常に考慮すべき"
+})
+
+// フラグ付き指示を一覧表示
+feedback({ action: "list" })
+
+// criticalFeedbackのみフィルタ
+feedback({ action: "list", filter: "criticalFeedback" })
+```
+
+### 成果
+✅ **シンプルな実装**: 3アクション（add/remove/list）のみ  
+✅ **既存機能との連携**: スコアリングアルゴリズムと自動連携  
+✅ **柔軟な判断**: 人間の指摘 + LLMの自律判断の両方をサポート  
+✅ **フロントマター更新**: gray-matterで安全に更新  
+✅ **フィルタリング**: criticalFeedback/copilotEssential/allで絞り込み  
+✅ **理由記録**: なぜ重要かを明確化  
+
+### 設計の確定事項
+- **保存場所**: `.copilot-instructions/`のフロントマター
+- **フラグ**: criticalFeedback（人間）/ copilotEssential（LLM）
+- **スコアリング**: +500点 / +300点
+- **理由記録**: `criticalFeedbackReason`/`copilotEssentialReason`
+- **動的生成**: change_context実行時に自動的に高スコアで抽出
+
+### PBI-004 完了
+- [x] feedbackツール実装（add/remove/list）
+- [x] criticalFeedback/copilotEssentialフラグ対応
+- [x] フロントマター自動更新
+- [x] スコアリングアルゴリズムとの連携確認
+- [x] テスト（10シナリオすべて成功）
+
