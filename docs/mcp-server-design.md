@@ -7,27 +7,49 @@
 
 ## 1. 概要
 
-このMCPサーバは、`.github/copilot-instructions.md`を動的にメンテナンスし、GitHub Copilotがプロジェクトのコンテキストをしっかりと理解し続けられるようにするためのツール群を提供します。
+このMCPサーバは、**LLMのアテンション分散問題を解決**するために、巨大な指示書データベースから現在の文脈に必要な指示だけを動的に抽出し、`.github/copilot-instructions.md`を生成します。
 
-### 1.1 目的
+### 1.1 設計思想
 
-- プロジェクトの状態変化に応じて指示書を最新に保つ
-- LLMエージェントが「道を失わない」ように構造化された情報を管理
-- **人間開発者**の意図やフィードバック、**Copilot自身**の観察を記録し、適切な対応策を提供
-- 指示書の品質を維持し、Copilotの効果を最大化
+**課題**: 開発が進むと指示書が膨大化し、LLMのアテンションが分散して重要な指示が効かなくなる
 
-### 1.2 重要: 用語の定義
+**解決策**:
+```
+.copilot-instructions/ (指示書データベース、Git管理)
+  ├─ architecture/     # アーキテクチャ関連の指示
+  ├─ patterns/         # 設計パターン
+  ├─ conventions/      # コーディング規約
+  └─ phases/           # 開発フェーズ別の指示
+      ↓
+MCPサーバ (文脈認識エンジン)
+  • ToDoやタスク状態から現在の文脈を把握
+  • Gitコミットハッシュと紐付けて状態管理
+  • 関連する指示だけをフィルタリング
+      ↓
+.github/copilot-instructions.md (動的生成)
+  • 今必要な指示だけに厳選
+  • LLMのアテンションを集中
+```
+
+### 1.2 目的
+
+- **アテンション分散の防止**: プロジェクト全体の知識を保持しつつ、LLMには「今の流れ」に必要な指示だけを提供
+- **文脈依存の動的生成**: ToDoやタスク状態から、現在のフェーズに適切な指示を自動抽出
+- **Git統合**: 指示書データベース全体をGit管理し、コミットハッシュと紐付けて状態を管理
+- **LLM主導の自己管理**: Copilot (LLM)自身がMCPツールを呼び出してコンテキストを制御
+
+### 1.3 重要: 用語の定義
 
 本設計書では、**「ユーザー」が2つの意味を持つ**ことに注意が必要です。
 
 - **Copilot (LLM)**: MCPツールの**主要利用者**。`project_context`や`instructions_structure`を自ら呼び出してコンテキストを管理。
-- **人間開発者**: Copilotを使用する実際の開発者。Copilotに指示を出し、`user_feedback`(将来的に`developer_feedback`)でフィードバックを記録。
+- **人間開発者**: Copilotを使用する実際の開発者。Copilotに指示を出し、最終判断を行う。
 
 **文脈による区別**:
 - `guidance`, `project_context`, `instructions_structure`: **Copilotが使用**
-- `user_feedback` (将来: `developer_feedback`): **人間開発者の感情・フィードバックを記録**
+- `generate_instructions`: **動的フィルタリングによる指示書生成**
 
-### 1.2 設計原則
+### 1.4 設計原則
 
 1. **シンプルさ**: ツール数を最小限に抑え、action引数でCRUD操作を切り替え
 2. **階層性**: ローレベル（構造操作）とハイレベル（意味操作）を分離
@@ -214,45 +236,116 @@
 
 ---
 
-#### 2.3.2 `adaptive_instructions`
+#### 2.3.2 `change_context`
 
-**目的**: 文脈や状態に応じて動的に指示書を調整
+**目的**: 開発の文脈・状態を変更し、それをトリガーに指示書を自動再生成
 
 **パラメータ**:
 ```typescript
 {
-  action: "analyze" | "generate" | "apply" | "rollback";
+  action: "update" | "read" | "reset";
   
-  // analyze: 現在の状況を分析
-  analysisContext?: {
-    codebaseChanges?: boolean;  // コードベースの変更を分析
-    recentErrors?: boolean;  // 最近のエラーパターンを分析
-    teamFeedback?: boolean;  // チームのフィードバックを分析
-    copilotPerformance?: boolean;  // Copilotの効果を評価
+  // 更新する状態変数
+  state?: {
+    phase?: "development" | "refactoring" | "testing" | "debugging" | "documentation";
+    focus?: string[];  // 現在のフォーカス（例: ["API認証", "JWT検証"]）
+    priority?: "high" | "medium" | "low";  // 現在のタスク優先度
+    mode?: "normal" | "strict" | "experimental";  // 動作モード
   };
   
-  // generate: 新しい指示を生成
-  generationContext?: {
-    scenario: "new-feature" | "refactoring" | "bug-fix" | "performance" | "security";
-    scope?: string[];  // 影響を受けるファイルやディレクトリ
-    temporaryDuration?: string;  // 一時的な指示の有効期限（ISO 8601 duration）
-    basedOn?: string[];  // 既存のコンテキストIDを基に生成
-  };
-  
-  // apply: 生成された指示を適用
-  instructionId?: string;
-  
-  // rollback: 以前の状態に戻す
-  version?: string;  // 特定のバージョンに戻す
-  timestamp?: string;  // 特定の時点に戻す
+  // 自動的に指示書を再生成するか
+  autoRegenerate?: boolean;  // デフォルト: true
 }
 ```
 
 **説明**:
-- コードベースの変化を検出し、必要に応じて指示を調整
-- タスクやシナリオに応じた一時的な指示を生成
-- 変更履歴を管理し、いつでもロールバック可能
-- A/Bテストのような複数の指示パターンを試行可能
+- **軽量**: ToDoツールよりシンプル、Copilotが気軽に呼べる
+- **トリガー**: state変更時に自動的に`generate_instructions`を内部実行
+- **透過的**: 開発者は「状態を変える」だけで、指示書が最適化される
+
+**使用例**:
+```typescript
+// リファクタリングフェーズに移行
+change_context({
+  action: "update",
+  state: {
+    phase: "refactoring",
+    focus: ["コードレビュー指摘対応", "テストカバレッジ向上"]
+  }
+})
+// → 自動的に .github/copilot-instructions.md が再生成される
+// → refactoring関連の指示が優先的に含まれる
+```
+
+**戻り値**:
+```typescript
+{
+  success: boolean;
+  previousState: any;
+  currentState: any;
+  
+  // autoRegenerate=true の場合
+  regenerated?: {
+    sectionsCount: number;
+    changedSections: string[];  // 前回から変わったセクション
+    gitCommit: string;
+  };
+}
+```
+
+---
+
+#### 2.3.3 `generate_instructions`
+
+**目的**: 現在の文脈（change_contextで設定された状態、Gitコミット）に基づいて、最適化された指示書を動的に生成
+
+**パラメータ**:
+```typescript
+{
+  action: "generate" | "preview" | "rollback";
+  
+  // フィルタリング設定（通常は change_context の状態を使用）
+  filtering?: {
+    categories?: string[];  // 含めるカテゴリ（architecture/patterns/conventions等）
+    excludeCategories?: string[];  // 除外するカテゴリ
+    maxSections?: number;  // 最大セクション数（デフォルト: 10）
+    maxItemsPerSection?: number;  // セクションあたりの最大項目数（デフォルト: 3-4）
+  };
+  
+  // rollback用
+  targetCommit?: string;  // 復元先のGitコミットハッシュ
+}
+```
+
+**注意**: 通常、このツールは**change_contextから自動実行**されるため、直接呼ぶケースは少ない
+
+**説明**:
+- **generate**: 現在の文脈から関連する指示を`.copilot-instructions/`から抽出し、`.github/copilot-instructions.md`を生成
+- **preview**: 生成される内容をプレビュー（実際には書き込まない）
+- **apply**: プレビューした内容を実際に適用
+- **rollback**: 特定のGitコミット時点の指示書に戻す
+
+**動的フィルタリングのロジック**:
+```typescript
+// 例: change_context で phase="development", focus=["API認証", "JWT"] に設定
+change_context({
+  state: {
+    phase: "development",
+    focus: ["API認証", "JWT"]
+  }
+})
+↓ 自動的に generate_instructions 実行
+↓
+必須セクション（required: true）:
+  - .copilot-instructions/tools/mcp-server-usage.md
+  - .copilot-instructions/conventions/typescript.md
+関連セクション（スコアリングで選択）:
+  - .copilot-instructions/architecture/api-design.md  (スコア: 18)
+  - .copilot-instructions/patterns/security.md        (スコア: 15)
+  - .copilot-instructions/phases/development.md       (スコア: 8)
+↓
+合計: 5セクション → .github/copilot-instructions.md に書き込み
+```
 
 **戻り値**:
 ```typescript
@@ -260,54 +353,57 @@
   success: boolean;
   action: string;
   
-  // analyze時
-  analysis?: {
-    codebaseHealth: {
-      conventionsFollowed: number;  // 0-100
-      inconsistencies: string[];
-      suggestedImprovements: string[];
-    };
-    errorPatterns: Array<{
-      pattern: string;
-      frequency: number;
-      suggestedInstruction: string;
-    }>;
-    copilotEffectiveness: {
-      acceptanceRate: number;  // 0-100
-      commonRejectionReasons: string[];
-    };
-  };
-  
-  // generate時
+  // generate/preview時
   generated?: {
-    id: string;
-    instructions: string;  // Markdown形式
-    rationale: string;  // 生成理由
-    expectedImpact: string;
-    expiresAt?: string;
+    sections: Array<{
+      source: string;  // 元ファイルパス（.copilot-instructions/xxx.md）
+      heading: string;
+      content: string;
+      reason: string;  // なぜこのセクションが選ばれたか
+    }>;
+    totalSize: number;  // 生成される指示書の総バイト数
+    gitCommit: string;  // 紐付けられたGitコミットハッシュ
+    context: any;  // 使用された文脈情報
   };
   
   // apply時
   applied?: {
-    instructionId: string;
-    affectedSections: string[];
-    backupVersion: string;
+    filePath: string;  // .github/copilot-instructions.md
+    sectionsCount: number;
+    gitCommit: string;
+    backup: string;  // バックアップファイルパス
   };
   
   // rollback時
   rolledBack?: {
-    fromVersion: string;
-    toVersion: string;
-    changes: string[];
+    fromCommit: string;
+    toCommit: string;
+    restoredSections: string[];
   };
   
   errors?: string[];
 }
 ```
 
+**使用例**:
+```typescript
+// 1. 現在のToDoを基に指示書をプレビュー
+generate_instructions({
+  action: "preview",
+  context: {
+    currentTodos: ["PBI-001 Step 3実装", "3-way diff実装"]
+  }
+})
+
+// 2. 問題なければ適用
+generate_instructions({
+  action: "apply"
+})
+```
+
 ---
 
-#### 2.3.3 `user_feedback`
+#### 2.3.3 `user_feedback` (将来実装)
 
 **目的**: **人間開発者**の感情、指摘、フィードバックを記録し、対処方法を管理
 
@@ -507,30 +603,253 @@ Active Adaptive Instruction: adapt-123
 
 ---
 
-## 4. ワークフロー例
+## 4. 動的指示書生成エンジンの詳細
 
-### 4.1 初回セットアップ
+### 4.1 指示書データベース構造
 
-1. `guidance(topic: "getting-started")` - 使い方を確認
-2. `project_context(action: "create", context: {...})` - プロジェクト情報を登録
-3. `adaptive_instructions(action: "generate", generationContext: {...})` - 初期指示を生成
-4. `adaptive_instructions(action: "apply", instructionId: "...")` - 指示を適用
+```
+.copilot-instructions/
+  ├── _templates/
+  │   ├── mcp-tools-usage.md     # 本MCPサーバの使い方（必須テンプレート）
+  │   ├── project-setup.md       # プロジェクト固有のセットアップ
+  │   └── common-patterns.md     # 共通パターンテンプレート
+  ├── architecture/
+  │   ├── api-design.md          # API設計の原則
+  │   ├── database.md            # データベース設計
+  │   └── system-design.md       # システム全体設計
+  ├── patterns/
+  │   ├── error-handling.md      # エラーハンドリング
+  │   ├── testing.md             # テストパターン
+  │   └── async-patterns.md      # 非同期処理パターン
+  ├── conventions/
+  │   ├── typescript.md          # TypeScript規約（常に含む、required: true）
+  │   ├── git-workflow.md        # Gitワークフロー
+  │   └── naming.md              # 命名規則
+  ├── phases/
+  │   ├── development.md         # 開発フェーズ固有の指示
+  │   ├── refactoring.md
+  │   ├── testing.md
+  │   └── debugging.md
+  ├── tools/
+  │   ├── mcp-server-usage.md    # 本MCPサーバの詳細な使い方（required: true）
+  │   ├── vscode-shortcuts.md    # VS Codeショートカット
+  │   └── git-commands.md        # よく使うGitコマンド
+  └── meta.json                  # メタデータ（カテゴリ、タグ、優先度等）
+```
 
-### 4.2 日常的なメンテナンス
+各`.md`ファイルは以下のフロントマターを持つ：
+```markdown
+---
+category: architecture
+tags: [api, rest, design]
+priority: high
+phases: [development, refactoring]
+related: [patterns/error-handling.md]
+---
 
-1. `adaptive_instructions(action: "analyze")` - 定期的に状況を分析
-2. 問題が検出されたら:
-   - `user_feedback(action: "create", feedback: {...})` - 問題を記録
-   - `project_context(action: "update", context: {...})` - コンテキストを更新
-   - `adaptive_instructions(action: "generate")` - 新しい指示を生成
+# API設計の原則
 
-### 4.3 トラブルシューティング
+...
+```
 
-1. `user_feedback(action: "read", filter: {severity: "critical"})` - 重大な問題を確認
-2. `adaptive_instructions(action: "analyze")` - 詳細分析
-3. `instructions_structure(action: "read")` - 現在の指示書構造を確認
-4. `instructions_structure(action: "update", element: {...})` - ピンポイントで修正
-5. `user_feedback(action: "resolve", resolution: {...})` - 対応を記録
+### 4.2 文脈認識アルゴリズム
+
+```typescript
+interface ScoringRules {
+  // 基本スコア
+  todoKeywordMatch: number;      // デフォルト: 10
+  tagMatch: number;              // デフォルト: 5
+  phaseMatch: number;            // デフォルト: 8
+  filePathMatch: number;         // デフォルト: 7
+  
+  // 優先度による加算
+  priorityHigh: number;          // デフォルト: 3
+  priorityMedium: number;        // デフォルト: 1
+  
+  // 特殊フラグ（これらは常に含める）
+  required: number;              // デフォルト: 1000 (事実上必須)
+  criticalFeedback: number;      // デフォルト: 500 (人間の強い指摘)
+  copilotEssential: number;      // デフォルト: 300 (Copilot判断で必須)
+}
+
+function selectRelevantInstructions(
+  context: Context,
+  rules: ScoringRules = DEFAULT_RULES
+): string[] {
+  const candidates = loadAllInstructions('.copilot-instructions/');
+  
+  // 必須フラグが付いているものを先に抽出
+  const required = candidates.filter(c => c.metadata.required === true);
+  const optional = candidates.filter(c => !c.metadata.required);
+  
+  const scored = optional.map(instruction => ({
+    instruction,
+    score: calculateRelevanceScore(instruction, context, rules)
+  }));
+  
+  // 必須 + スコア順で上位を選択
+  const selected = [
+    ...required,
+    ...scored
+      .filter(s => s.score > THRESHOLD)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_SECTIONS - required.length)
+      .map(s => s.instruction)
+  ];
+  
+  return selected;
+}
+
+// スコアリングルールは .copilot-state/scoring-rules.json で管理
+// Copilotや人間開発者が調整可能
+```
+
+### 4.3 Gitコミットとの紐付け
+
+```typescript
+interface InstructionState {
+  gitCommit: string;  // Gitコミットハッシュ
+  generatedAt: string;  // 生成日時
+  context: Context;  // 使用された文脈
+  sections: string[];  // 含まれたセクション
+  hash: string;  // 生成された指示書のSHA-256
+}
+
+// MCPサーバ内メモリまたは .copilot-state/instructions-history.json に保存
+const instructionHistory: Map<string, InstructionState> = new Map();
+```
+
+**運用フロー**:
+1. `generate_instructions`呼び出し時、現在のGitコミットハッシュを取得
+2. 生成された指示書と紐付けて保存
+3. Gitコミットが変わったら、自動的に「新しい状態」として認識
+4. 外部変更（同じコミットでファイル内容変更）は競合として扱う
+
+### 4.4 Git管理の推奨運用
+
+**推奨**: `.copilot-instructions/` をGit管理下に置く
+
+**メリット**:
+- ブランチごとに最適な指示書セット
+- レビュー・承認プロセス
+- ロールバック・変更履歴
+- チーム全体での共有
+
+**非推奨だが対応**: Git非管理
+- ハッシュベースの競合検知のみ
+- 変更履歴なし
+- ロールバック困難
+
+---
+
+## 5. ワークフロー例
+
+### 5.1 初回セットアップ
+
+1. **指示書データベースの作成**
+```bash
+mkdir -p .copilot-instructions/{architecture,patterns,conventions,phases}
+# 各カテゴリにMarkdownファイルを作成
+```
+
+2. **プロジェクト情報の登録**
+```typescript
+project_context({
+  action: "create",
+  context: {
+    category: "architecture",
+    title: "API設計原則",
+    description: "RESTful API設計のベストプラクティス",
+    priority: "high"
+  }
+})
+```
+
+3. **初回指示書生成**
+```typescript
+generate_instructions({
+  action: "preview",
+  context: {
+    activePhase: "development"
+  }
+})
+// 確認後
+generate_instructions({ action: "apply" })
+```
+
+### 5.2 日常的な開発フロー
+
+**シナリオ: 新機能開発開始**
+
+1. **開発文脈を設定**（Copilotが軽量ツールを実行）
+```typescript
+change_context({
+  action: "update",
+  state: {
+    phase: "development",
+    focus: ["API認証機能", "JWT トークン検証"],
+    priority: "high"
+  }
+})
+// → 自動的に指示書が再生成される
+// → 必須: tools/mcp-server-usage.md, conventions/typescript.md
+// → 関連: architecture/api-design.md, patterns/security.md, phases/development.md
+```
+
+2. **LLMが最適化された指示書で作業**
+- `.github/copilot-instructions.md`が自動更新される
+- 総セクション数: 5（必須2 + 関連3）
+- セクションあたり3-4項目、読みやすい分量
+- LLMは「API認証」「JWT」関連の指示に集中
+
+### 5.3 フェーズ切り替え（開発→リファクタリング）
+
+```typescript
+change_context({
+  action: "update",
+  state: {
+    phase: "refactoring",
+    focus: ["コードレビュー指摘対応", "テストカバレッジ向上"]
+  }
+})
+// → 自動的に指示書が再生成
+// → phases/refactoring.md が高スコア
+// → architecture/ は低スコア（設計より実装パターン重視）
+```
+
+### 5.4 トラブルシューティング
+
+**問題**: 生成された指示書が期待と違う
+
+1. **現在の状態を確認**
+```typescript
+instructions_structure({
+  action: "read",
+  includeGitInfo: true
+})
+```
+
+2. **手動で微調整**
+```typescript
+instructions_structure({
+  action: "update",
+  heading: "テスト原則",
+  newContent: "...",
+  expectedHash: "abc123..."
+})
+```
+
+3. **指示書データベースを編集**
+```bash
+vim .copilot-instructions/patterns/testing.md
+git add .copilot-instructions/
+git commit -m "feat: テスト指示を強化"
+```
+
+4. **再生成**
+```typescript
+generate_instructions({ action: "generate" })
+```
 
 ---
 
@@ -574,34 +893,49 @@ Active Adaptive Instruction: adapt-123
 
 ## 7. 実装の優先順位
 
-### Phase 1: MVP (Minimum Viable Product)
-- `guidance` - 基本的なガイダンス
-- `project_context` (create, read) - プロジェクト情報の登録と読み取り
-- `instructions_structure` (read, update) - 基本的な構造操作
+### Phase 1: MVP (Minimum Viable Product) ✅ 完了
+- `guidance` - 基本的なガイダンス ✅
+- `project_context` (create, read, update, delete) - 完全なCRUD ✅
+- `instructions_structure` (read, update) - 基本的な構造操作 ✅
+- Git統合 (checkGitManaged, getGitStatus, getGitDiff, getGitCommit) ✅
+- 競合検知（ハッシュベース + 競合マーカー） ✅
 
-### Phase 2: Core Features
-- `adaptive_instructions` (analyze, generate) - 動的な指示生成
-- `user_feedback` (create, read) - フィードバック記録
-- `project_context` (update, delete) - 完全なCRUD
+### Phase 2: 動的指示書生成エンジン 🚧 次の実装対象
+- `.copilot-instructions/` ディレクトリ構造の設計と初期テンプレート作成
+- `change_context` ツールの実装（軽量な状態変更）
+- `generate_instructions` (preview, generate) - 文脈認識とフィルタリング
+- フロントマター付きMarkdownのパース
+- 柔軟なスコアリングアルゴリズム（required/criticalFeedback/copilotEssential対応）
+- `.copilot-state/scoring-rules.json` で調整可能なルール
+- GitコミットとInstructionStateの紐付け
+- maxSections=10, maxItemsPerSection=3-4 の制約
 
 ### Phase 3: Advanced Features
-- `adaptive_instructions` (apply, rollback) - 適用とロールバック
-- `user_feedback` (resolve) - 問題解決の追跡
+- `generate_instructions` (rollback) - Git履歴を使ったロールバック
+- ブランチ戦略との統合（feature/xxx → 関連指示のみ、`.copilot-instructions/branches/`）
 - `instructions_structure` (create, delete) - 完全なCRUD
-- 統計とアナリティクス機能
+- 統計とアナリティクス機能（指示の効果測定、スコアリングルールの自動調整）
+- `developer_feedback` ツール（人間開発者の強い指摘を記録 → criticalFeedback フラグ自動付与）
 
 ---
 
 ## 8. まとめ
 
-このMCPサーバは、3つの階層（ガイダンス、ローレベル、ハイレベル）で指示書を管理し、Copilotが常に最適なコンテキストで動作できるようにします。
+このMCPサーバは、**LLMのアテンション分散問題**を根本的に解決するために、巨大な指示書データベースから文脈に応じて必要な指示だけを動的に生成します。
 
 **主な特徴**:
-- ✅ シンプルなAPI（4つのメインツール）
-- ✅ action引数によるCRUD統一
-- ✅ 構造化されたデータ管理
-- ✅ ユーザーフィードバックの体系的な記録
-- ✅ 動的な指示書の適応
-- ✅ 安全性とプライバシーの確保
+- ✅ **アテンション集中**: 膨大な知識を保持しつつ、LLMには「今必要な指示だけ」を提供
+- ✅ **文脈認識**: ToDo管理や開発フェーズから現在の状況を把握
+- ✅ **Git統合**: コミットハッシュと紐付けて状態管理、変更履歴・ロールバック対応
+- ✅ **動的フィルタリング**: スコアリングアルゴリズムで関連指示を自動抽出
+- ✅ **action引数によるCRUD統一**: シンプルで一貫したAPI設計
+- ✅ **安全性**: 競合検知、競合マーカー、デグレードモード対応
 
-次のステップは、この設計に基づいてMCPサーバの実装を開始することです。
+**設計思想の核心**:
+```
+問題: ガチガチに追記 → 指示書肥大化 → アテンション分散 → 効果減少
+解決: 大きな構造を持ちつつ、文脈に応じて絞って出す
+結果: LLMは常に「今の流れに必要な指示」に集中できる
+```
+
+次のステップ: Phase 2（動的指示書生成エンジン）の実装開始
