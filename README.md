@@ -30,13 +30,87 @@ In this project, careful attention is required regarding who "user" refers to:
 
 Unless specifically noted, "user" refers to **Copilot (LLM) itself**.
 
-## Quick Start
-```bash
-# Build server
-cd server && npm run build
+## Installation
 
-# Server will auto-start via MCP (no manual start needed)
+### Using npx (Recommended)
+
+The easiest way to use this MCP server is via npx:
+
+```bash
+npx @mako10k/mcp-copilot-instructions
 ```
+
+### From npm
+
+```bash
+npm install -g @mako10k/mcp-copilot-instructions
+```
+
+### From Source
+
+```bash
+git clone https://github.com/mako10k/mcp-copilot-instructions.git
+cd mcp-copilot-instructions/server
+npm install
+npm run build
+```
+
+## Configuration
+
+### For Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "copilot-instructions": {
+      "command": "npx",
+      "args": ["@mako10k/mcp-copilot-instructions"]
+    }
+  }
+}
+```
+
+**Config file locations:**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+
+### For VS Code with GitHub Copilot
+
+Add to your VS Code `settings.json`:
+
+```json
+{
+  "github.copilot.chat.mcp.enabled": true,
+  "github.copilot.chat.mcp.servers": {
+    "copilot-instructions": {
+      "command": "npx",
+      "args": ["@mako10k/mcp-copilot-instructions"]
+    }
+  }
+}
+```
+
+### Using Local Installation
+
+If installed globally or from source:
+
+```json
+{
+  "mcpServers": {
+    "copilot-instructions": {
+      "command": "node",
+      "args": ["/path/to/mcp-copilot-instructions/server/dist/index.js"]
+    }
+  }
+}
+```
+
+## Quick Start
+
+After configuration, restart your MCP client (Claude Desktop or VS Code). The server will automatically start when the client initializes.
 
 ## Main Documentation
 - Design: `docs/mcp-server-design.md`
@@ -63,7 +137,33 @@ cd server && npm run build
 4. **change_context**: Development context switching with auto-regeneration
 5. **feedback**: Critical feedback tracking
 6. **onboarding**: Migration support for existing projects
-7. **goal_management**: Hierarchical goal tracking and progress management (NEW)
+7. **goal_management**: Hierarchical goal tracking and progress management
+
+## Troubleshooting
+
+### Server doesn't start
+- Ensure Node.js 18+ is installed: `node --version`
+- Verify npx is available: `which npx`
+- Check MCP client logs for error messages
+
+### Tools not appearing
+- Restart MCP client completely
+- Verify configuration JSON syntax is valid
+- Check that command path is correct
+
+### Permission errors
+- On Unix systems, ensure execute permission: `chmod +x dist/index.js`
+- For global install, may need sudo: `sudo npm install -g @mako10k/mcp-copilot-instructions`
+
+## Contributing
+
+Contributions are welcome! Please see:
+- Design documentation: `docs/mcp-server-design.md`
+- Development scenarios: `docs/operation-scenarios.md`
+
+## License
+
+MIT License - see LICENSE file for details
 
 ## Next Development Steps
 - Integration testing and CI/CD setup

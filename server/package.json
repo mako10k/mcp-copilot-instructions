@@ -1,15 +1,48 @@
 {
-  "name": "mcp-server",
-  "version": "0.1.0",
-  "description": "MCP Copilot Instructions Server MVP",
+  "name": "@mako10k/mcp-copilot-instructions",
+  "version": "0.1.2",
+  "description": "MCP server for context-dependent dynamic instruction generation with goal management. Solves LLM attention dispersion by extracting only relevant instructions for current development phase.",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-copilot-instructions": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "github-copilot",
+    "claude",
+    "instructions",
+    "goals",
+    "context-management",
+    "llm",
+    "ai"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mako10k/mcp-copilot-instructions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mako10k/mcp-copilot-instructions/issues"
+  },
+  "homepage": "https://github.com/mako10k/mcp-copilot-instructions#readme",
+  "author": "mako10k",
+  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "test": "npm run build && node dist/tests/index.js",
+    "test:unit": "npm run build && node dist/tests/index.js unit",
+    "test:integration": "npm run build && node dist/tests/index.js integration",
+    "test:list": "npm run build && node dist/tests/index.js list",
     "lint": "eslint . --ext .ts",
-    "format": "prettier --check ."
+    "format": "prettier --check .",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/mdast": "^4.0.4",
