@@ -221,6 +221,200 @@ cat ../.copilot-context/contexts.json
 - [ ] IDが一意に生成される
 
 ### シナリオ3
-- [ ] Markdownの見出し一覧を取得
-- [ ] 新規セクションを追加
-- [ ] 既存セクションを更新
+- [x] Markdownの見出し一覧を取得
+- [x] 新規セクションを追加
+- [x] 既存セクションを更新
+
+---
+
+## シナリオ4: project_context の完全CRUD
+
+### 目標
+- `project_context`にupdate/delete機能を追加
+- フィルタ機能（カテゴリ・タグ・優先度範囲）を実装
+- 実用レベルのコンテキスト管理を実現
+
+### 実装内容
+
+#### 1. contextStorageにCRUD関数追加
+```typescript
+// server/src/utils/contextStorage.ts
+export async function updateContext(
+  id: string,
+  updates: Partial<Omit<ProjectContext, 'id' | 'createdAt' | 'updatedAt'>>
+): Promise<boolean> {
+  const contexts = await loadContexts();
+  const index = contexts.findIndex((ctx) => ctx.id === id);
+  if (index === -1) return false;
+  
+  contexts[index] = {
+    ...contexts[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  
+  await saveContexts(contexts);
+  return true;
+}
+
+export async function deleteContext(id: string): Promise<boolean> {
+  const contexts = await loadContexts();
+  const index = contexts.findIndex((ctx) => ctx.id === id);
+  if (index === -1) return false;
+  
+  contexts.splice(index, 1);
+  await saveContexts(contexts);
+  return true;
+}
+
+export async function filterContexts(filters: {
+  category?: string;
+  tags?: string[];
+  minPriority?: number;
+  maxPriority?: number;
+}): Promise<ProjectContext[]> {
+  const contexts = await loadContexts();
+  return contexts.filter((ctx) => {
+    if (filters.category && ctx.category !== filters.category) return false;
+    if (filters.tags && !filters.tags.some((tag) => ctx.tags.includes(tag))) return false;
+    if (filters.minPriority && ctx.priority < filters.minPriority) return false;
+    if (filters.maxPriority && ctx.priority > filters.maxPriority) return false;
+    return true;
+  });
+}
+```
+
+#### 2. project_contextツールにaction追加
+```typescript
+// server/src/tools/project_context.ts
+export async function projectContext(args: ProjectContextArgs) {
+  switch (args.action) {
+    case 'update': {
+      const updates = {}; // action/id以外のフィールドを抽出
+      if (args.category !== undefined) updates.category = args.category;
+      if (args.title !== undefined) updates.title = args.title;
+      // ... 他のフィールド
+      
+      const success = await updateContext(args.id, updates);
+      return success 
+        ? `プロジェクト文脈を更新しました。\nID: ${args.id}`
+        : `エラー: ID「${args.id}」の文脈が見つかりません。`;
+    }
+    
+    case 'delete': {
+      const success = await deleteContext(args.id);
+      return success
+        ? `プロジェクト文脈を削除しました。\nID: ${args.id}`
+        : `エラー: ID「${args.id}」の文脈が見つかりません。`;
+    }
+    
+    case 'read': {
+      // フィルタパラメータがある場合はfilterContextsを使用
+      if (args.category || args.tags || args.minPriority || args.maxPriority) {
+        const filtered = await filterContexts({
+          category: args.category,
+          tags: args.tags,
+          minPriority: args.minPriority,
+          maxPriority: args.maxPriority,
+        });
+        return `フィルタ結果（${filtered.length}件）:\n\n${JSON.stringify(filtered, null, 2)}`;
+      }
+      // 通常のread処理
+    }
+  }
+}
+```
+
+#### 3. index.tsのinputSchema更新
+```typescript
+// server/src/index.ts
+{
+  name: 'project_context',
+  inputSchema: {
+    properties: {
+      action: {
+        enum: ['create', 'read', 'update', 'delete'],
+      },
+      id: {
+        type: 'string',
+        description: 'コンテキストID（update/deleteの場合必須）',
+      },
+      category: {
+        description: 'カテゴリ（create必須、read/updateではフィルタ/更新用）',
+      },
+      // ... 他のフィールド
+      minPriority: {
+        type: 'number',
+        description: '最小優先度（readでのフィルタ用）',
+      },
+      maxPriority: {
+        type: 'number',
+        description: '最大優先度（readでのフィルタ用）',
+      },
+    },
+  },
+}
+```
+
+### 動作確認手順
+
+1. **Update機能テスト**
+```typescript
+// 既存コンテキストの優先度とタグを更新
+await projectContext({
+  action: 'update',
+  id: 'ctx-1764564670175-qqahhjb0s',
+  priority: 10,
+  tags: ['architecture', 'design-principle', 'mcp-server', 'validated']
+});
+```
+
+2. **Filter機能テスト**
+```typescript
+// カテゴリでフィルタ
+await projectContext({ action: 'read', category: 'constraints' });
+
+// タグでフィルタ
+await projectContext({ action: 'read', tags: ['validated'] });
+
+// 優先度範囲でフィルタ
+await projectContext({ action: 'read', minPriority: 9, maxPriority: 10 });
+```
+
+3. **Delete機能テスト**
+```typescript
+// テストコンテキスト作成
+const { id } = await projectContext({
+  action: 'create',
+  category: 'test',
+  title: 'テストコンテキスト',
+  // ...
+});
+
+// 削除
+await projectContext({ action: 'delete', id });
+
+// 削除確認（存在しないIDでエラー）
+await projectContext({ action: 'delete', id: 'ctx-nonexistent' });
+```
+
+### 実装メモ
+
+**バグ修正**: update時に`action`フィールドがコンテキストに混入する問題
+- 原因: `const { id, action, ...updates } = args;`でTypeScriptの型推論が不完全
+- 解決: 明示的にupdatesオブジェクトを構築
+```typescript
+const updates = {};
+if (args.category !== undefined) updates.category = args.category;
+// ... 必要なフィールドのみ抽出
+```
+
+### 成功基準
+
+- [x] update: 既存コンテキストの部分更新が可能、updatedAtが自動更新される
+- [x] delete: IDによる削除が可能、存在しないIDはエラーメッセージ
+- [x] filter (category): カテゴリでの絞り込みが正確
+- [x] filter (tags): タグ配列のいずれかにマッチする絞り込み
+- [x] filter (priority): 優先度範囲での絞り込み
+- [x] エラーハンドリング: 存在しないIDに対して適切なエラーメッセージ
+- [x] データ整合性: `action`フィールドなど不要なデータが混入しない

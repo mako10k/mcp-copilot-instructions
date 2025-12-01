@@ -60,3 +60,85 @@ export function createContext(
     updatedAt: now,
   };
 }
+
+/**
+ * プロジェクト文脈を更新
+ * @param id 更新する文脈のID
+ * @param updates 更新するフィールド
+ * @returns 更新に成功した場合true、文脈が見つからない場合false
+ */
+export async function updateContext(
+  id: string,
+  updates: Partial<Omit<ProjectContext, 'id' | 'createdAt' | 'updatedAt'>>
+): Promise<boolean> {
+  const contexts = await loadContexts();
+  const index = contexts.findIndex((ctx) => ctx.id === id);
+
+  if (index === -1) {
+    return false;
+  }
+
+  contexts[index] = {
+    ...contexts[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveContexts(contexts);
+  return true;
+}
+
+/**
+ * プロジェクト文脈を削除
+ * @param id 削除する文脈のID
+ * @returns 削除に成功した場合true、文脈が見つからない場合false
+ */
+export async function deleteContext(id: string): Promise<boolean> {
+  const contexts = await loadContexts();
+  const index = contexts.findIndex((ctx) => ctx.id === id);
+
+  if (index === -1) {
+    return false;
+  }
+
+  contexts.splice(index, 1);
+  await saveContexts(contexts);
+  return true;
+}
+
+/**
+ * プロジェクト文脈をフィルタリング
+ * @param filters フィルタ条件
+ * @returns フィルタリングされた文脈の配列
+ */
+export async function filterContexts(filters: {
+  category?: string;
+  tags?: string[];
+  minPriority?: number;
+  maxPriority?: number;
+}): Promise<ProjectContext[]> {
+  const contexts = await loadContexts();
+
+  return contexts.filter((ctx) => {
+    if (filters.category && ctx.category !== filters.category) {
+      return false;
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      const hasTag = filters.tags.some((tag) => ctx.tags.includes(tag));
+      if (!hasTag) {
+        return false;
+      }
+    }
+
+    if (filters.minPriority !== undefined && ctx.priority < filters.minPriority) {
+      return false;
+    }
+
+    if (filters.maxPriority !== undefined && ctx.priority > filters.maxPriority) {
+      return false;
+    }
+
+    return true;
+  });
+}

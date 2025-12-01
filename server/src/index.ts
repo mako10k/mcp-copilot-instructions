@@ -47,29 +47,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             action: {
               type: 'string',
-              enum: ['create', 'read'],
-              description: 'アクション: create/read',
+              enum: ['create', 'read', 'update', 'delete'],
+              description: 'アクション: create/read/update/delete',
+            },
+            id: {
+              type: 'string',
+              description: 'コンテキストID（update/deleteの場合必須）',
             },
             category: {
               type: 'string',
-              description: 'カテゴリ（createの場合必須）',
+              description: 'カテゴリ（createの場合必須、read/updateではフィルタ/更新用）',
             },
             title: {
               type: 'string',
-              description: 'タイトル（createの場合必須）',
+              description: 'タイトル（createの場合必須、updateでは更新用）',
             },
             description: {
               type: 'string',
-              description: '説明（createの場合必須）',
+              description: '説明（createの場合必須、updateでは更新用）',
             },
             priority: {
               type: 'number',
-              description: '優先度（1-10、デフォルト5）',
+              description: '優先度（1-10、デフォルト5、updateでは更新用）',
             },
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'タグ配列',
+              description: 'タグ配列（readではフィルタ用、updateでは更新用）',
+            },
+            minPriority: {
+              type: 'number',
+              description: '最小優先度（readでのフィルタ用）',
+            },
+            maxPriority: {
+              type: 'number',
+              description: '最大優先度（readでのフィルタ用）',
             },
           },
           required: ['action'],
