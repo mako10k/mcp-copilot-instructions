@@ -29,14 +29,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: 'guidance',
-        description: 'MCPサーバの使用ガイドと現在状態を返す',
+        description: 'Returns MCP server usage guide and current status',
         inputSchema: {
           type: 'object',
           properties: {
             action: {
               type: 'string',
               enum: ['overview', 'getting-started', 'current-state'],
-              description: 'アクション: overview/getting-started/current-state',
+              description: 'Action: overview/getting-started/current-state',
             },
           },
           required: ['action'],
@@ -44,52 +44,52 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'project_context',
-        description: 'プロジェクト文脈のCRUD操作',
+        description: 'CRUD operations for project context',
         inputSchema: {
           type: 'object',
           properties: {
             action: {
               type: 'string',
               enum: ['create', 'read', 'update', 'delete'],
-              description: 'アクション: create/read/update/delete',
+              description: 'Action: create/read/update/delete',
             },
             id: {
               type: 'string',
-              description: 'コンテキストID（update/deleteの場合必須）',
+              description: 'Context ID (required for update/delete)',
             },
             category: {
               type: 'string',
-              description: 'カテゴリ（createの場合必須、read/updateではフィルタ/更新用）',
+              description: 'Category (required for create, for filtering/update in read/update)',
             },
             title: {
               type: 'string',
-              description: 'タイトル（createの場合必須、updateでは更新用）',
+              description: 'Title (required for create, for update in update)',
             },
             description: {
               type: 'string',
-              description: '説明（createの場合必須、updateでは更新用）',
+              description: 'Description (required for create, for update in update)',
             },
             priority: {
               type: 'number',
-              description: '優先度（1-10、デフォルト5、updateでは更新用）',
+              description: 'Priority (1-10, default: 5, for update in update)',
             },
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'タグ配列（readではフィルタ用、updateでは更新用）',
+              description: 'Tags array (for filtering in read, for update in update)',
             },
             minPriority: {
               type: 'number',
-              description: '最小優先度（readでのフィルタ用）',
+              description: 'Minimum priority (for filtering in read)',
             },
             maxPriority: {
               type: 'number',
-              description: '最大優先度（readでのフィルタ用）',
+              description: 'Maximum priority (for filtering in read)',
             },
             format: {
               type: 'string',
               enum: ['summary', 'full'],
-              description: '表示形式（summary: 簡潔表示[デフォルト], full: 詳細JSON）',
+              description: 'Display format (summary: concise display [default], full: detailed JSON)',
             },
           },
           required: ['action'],
@@ -98,8 +98,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'change_context',
         description:
-          '開発の文脈・状態を変更し、それをトリガーに指示書を自動再生成。' +
-          'phase/focus/priority/modeを設定すると、関連する指示だけが.github/copilot-instructions.mdに抽出される。',
+          'Change development context/state to trigger automatic instructions regeneration. ' +
+          'Setting phase/focus/priority/mode extracts only relevant instructions to .github/copilot-instructions.md.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -107,8 +107,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'string',
               enum: ['update', 'read', 'reset', 'rollback', 'list-history', 'show-diff', 'cleanup-history'],
               description: 
-                'アクション: update(状態更新) / read(現在の状態取得) / reset(デフォルトに戻す) / ' +
-                'rollback(履歴から復元) / list-history(履歴一覧) / show-diff(差分表示) / cleanup-history(古い履歴削除)',
+                'Action: update(update state) / read(get current state) / reset(reset to default) / ' +
+                'rollback(restore from history) / list-history(list history) / show-diff(show diff) / cleanup-history(cleanup old history)',
             },
             state: {
               type: 'object',
@@ -116,49 +116,49 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 phase: {
                   type: 'string',
                   enum: ['development', 'refactoring', 'testing', 'debugging', 'documentation'],
-                  description: '開発フェーズ',
+                  description: 'Development phase',
                 },
                 focus: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '現在のフォーカス（例: ["API認証", "JWT"]）',
+                  description: 'Current focus (e.g. ["API authentication", "JWT"])',
                 },
                 priority: {
                   type: 'string',
                   enum: ['high', 'medium', 'low'],
-                  description: '現在のタスク優先度',
+                  description: 'Current task priority',
                 },
                 mode: {
                   type: 'string',
                   enum: ['normal', 'strict', 'experimental'],
-                  description: '動作モード',
+                  description: 'Operation mode',
                 },
               },
-              description: '更新する状態（updateの場合に指定）',
+              description: 'State to update (specify when action is update)',
             },
             autoRegenerate: {
               type: 'boolean',
-              description: '自動的に指示書を再生成するか（デフォルト: true）',
+              description: 'Whether to automatically regenerate instructions (default: true)',
             },
             timestamp: {
               type: ['string', 'number'],
-              description: 'ロールバック先のタイムスタンプまたはインデックス（rollbackの場合、0=最新）',
+              description: 'Timestamp or index to rollback to (for rollback, 0=latest)',
             },
             limit: {
               type: 'number',
-              description: '履歴の表示件数（list-historyの場合）',
+              description: 'Number of history entries to display (for list-history)',
             },
             from: {
               type: ['string', 'number'],
-              description: '比較元のタイムスタンプまたはインデックス（show-diffの場合、デフォルト: 1）',
+              description: 'Source timestamp or index for comparison (for show-diff, default: 1)',
             },
             to: {
               type: ['string', 'number'],
-              description: '比較先のタイムスタンプまたはインデックス（show-diffの場合、デフォルト: 0）',
+              description: 'Target timestamp or index for comparison (for show-diff, default: 0)',
             },
             daysToKeep: {
               type: 'number',
-              description: '保持する日数（cleanup-historyの場合、デフォルト: 30）',
+              description: 'Number of days to keep (for cleanup-history, default: 30)',
             },
           },
           required: ['action'],
@@ -167,9 +167,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'instructions_structure',
         description:
-          '指示書Markdown ASTの完全なCRUD操作と競合管理。' +
-          'read(構造取得) / update(セクション更新) / delete(セクション削除) / insert(セクション挿入) / ' +
-          'detect-conflicts(競合検出) / resolve-conflict(競合解決)。',
+          'Complete CRUD operations and conflict management for instructions Markdown AST. ' +
+          'read(get structure) / update(update section) / delete(delete section) / insert(insert section) / ' +
+          'detect-conflicts(detect conflicts) / resolve-conflict(resolve conflict).',
         inputSchema: {
           type: 'object',
           properties: {
@@ -177,42 +177,42 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'string',
               enum: ['read', 'update', 'delete', 'insert', 'detect-conflicts', 'resolve-conflict'],
               description:
-                'アクション: read(構造取得) / update(セクション更新) / delete(セクション削除) / ' +
-                'insert(セクション挿入) / detect-conflicts(競合検出) / resolve-conflict(競合解決)',
+                'Action: read(get structure) / update(update section) / delete(delete section) / ' +
+                'insert(insert section) / detect-conflicts(detect conflicts) / resolve-conflict(resolve conflict)',
             },
             includeGitInfo: {
               type: 'boolean',
-              description: 'Git情報を含めるか（readの場合のみ、デフォルト: false）',
+              description: 'Whether to include Git information (for read only, default: false)',
             },
             heading: {
               type: 'string',
-              description: 'セクション見出し（update/delete/insert/resolve-conflictの場合必須）',
+              description: 'Section heading (required for update/delete/insert/resolve-conflict)',
             },
             content: {
               type: 'string',
-              description: 'セクション内容（update/insertの場合必須）',
+              description: 'Section content (required for update/insert)',
             },
             position: {
               type: 'string',
               enum: ['before', 'after', 'first', 'last'],
               description:
-                '挿入位置（insertの場合必須）: ' +
-                'before(アンカーの前) / after(アンカーの後) / first(先頭) / last(最後)',
+                'Insertion position (required for insert): ' +
+                'before(before anchor) / after(after anchor) / first(at beginning) / last(at end)',
             },
             anchor: {
               type: 'string',
-              description: '基準となるセクションの見出し（position=before/afterの場合必須）',
+              description: 'Reference section heading (required when position=before/after)',
             },
             resolution: {
               type: 'string',
               enum: ['use-head', 'use-mcp', 'manual'],
               description:
-                '競合解決方法（resolve-conflictの場合必須）: ' +
-                'use-head(外部変更採用) / use-mcp(Copilot変更採用) / manual(手動統合)',
+                'Conflict resolution method (required for resolve-conflict): ' +
+                'use-head(use external changes) / use-mcp(use Copilot changes) / manual(manual merge)',
             },
             manualContent: {
               type: 'string',
-              description: '手動統合内容（resolution=manualの場合必須）',
+              description: 'Manual merge content (required when resolution=manual)',
             },
           },
           required: ['action'],
@@ -221,8 +221,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'onboarding',
         description:
-          '既存プロジェクトへのMCPサーバ導入を支援。既存指示書の分析、' +
-          'パターン検出（clean/structured/unstructured/messy）、マイグレーション提案、安全な適用。',
+          'Support MCP server introduction to existing projects. Analyze existing instructions, ' +
+          'detect patterns (clean/structured/unstructured/messy), propose migration, safe application.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -230,8 +230,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'string',
               enum: ['analyze', 'status', 'skip', 'propose', 'approve', 'migrate', 'rollback'],
               description:
-                'アクション: analyze(既存指示書の分析) / status(現在の状態確認) / skip(オンボーディングをスキップ) / ' +
-                'propose(マイグレーション提案作成) / approve(提案を承認) / migrate(マイグレーション実行) / rollback(元に戻す)',
+                'Action: analyze(analyze existing instructions) / status(check current status) / skip(skip onboarding) / ' +
+                'propose(create migration proposal) / approve(approve proposal) / migrate(execute migration) / rollback(rollback)',
             },
           },
           required: ['action'],
@@ -240,36 +240,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'feedback',
         description:
-          '指示書に対する重要なフィードバックを記録。' +
-          '人間開発者の明示的な指摘（criticalFeedback）または' +
-          'LLMが自律的に重要と判断した内容（copilotEssential）をフラグ設定。',
+          'Record important feedback on instructions. ' +
+          'Flag explicit feedback from human developers (criticalFeedback) or ' +
+          'content LLM autonomously judges as important (copilotEssential).',
         inputSchema: {
           type: 'object',
           properties: {
             action: {
               type: 'string',
               enum: ['add', 'remove', 'list'],
-              description: 'アクション: add(フラグ追加) / remove(フラグ削除) / list(一覧表示)',
+              description: 'Action: add(add flag) / remove(remove flag) / list(list flags)',
             },
             filePath: {
               type: 'string',
-              description: '対象ファイルの相対パス（例: "conventions/typescript.md"、add/removeの場合必須）',
+              description: 'Relative path to target file (e.g. "conventions/typescript.md", required for add/remove)',
             },
             flagType: {
               type: 'string',
               enum: ['criticalFeedback', 'copilotEssential'],
               description:
-                'フラグタイプ（add/removeの場合必須）: ' +
-                'criticalFeedback(人間の強い指摘) / copilotEssential(LLMの重要判断)',
+                'Flag type (required for add/remove): ' +
+                'criticalFeedback(strong human feedback) / copilotEssential(LLM importance judgment)',
             },
             reason: {
               type: 'string',
-              description: 'フラグを設定する理由（addの場合推奨）',
+              description: 'Reason for setting the flag (recommended for add)',
             },
             filter: {
               type: 'string',
               enum: ['all', 'criticalFeedback', 'copilotEssential'],
-              description: 'フィルタ（listの場合、デフォルト: all）',
+              description: 'Filter (for list, default: all)',
             },
           },
           required: ['action'],

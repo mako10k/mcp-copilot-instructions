@@ -11,7 +11,9 @@ TARGETS = [
 
 MAX_AGE_DAYS = 7
 
-ISO_PATTERN = re.compile(r'(作成日|Last Updated)\s*[:：]\s*(\d{4}[-年]\d{2}[-月]\d{2})')
+ISO_PATTERN = re.compile(
+    r'(作成日|Last Updated)\s*[:：]\s*(\d{4}[-年]\d{2}[-月]\d{2})'
+)
 
 
 def get_last_updated(p: Path):
@@ -38,7 +40,11 @@ def main():
             stale.append((str(t), 'missing'))
             continue
         last = get_last_updated(t)
-        age = now - last if last.tzinfo else now - last.replace(tzinfo=timezone.utc)
+        age = (
+            now - last
+            if last.tzinfo
+            else now - last.replace(tzinfo=timezone.utc)
+        )
         if age > timedelta(days=MAX_AGE_DAYS):
             stale.append((str(t), f'>{MAX_AGE_DAYS}d old'))
     if stale:
@@ -47,6 +53,7 @@ def main():
             print(f'- {name}: {reason}')
         sys.exit(1)
     print('All target files are fresh enough.')
+
 
 if __name__ == '__main__':
     main()
