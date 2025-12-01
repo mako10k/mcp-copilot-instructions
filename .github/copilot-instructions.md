@@ -31,7 +31,7 @@
 - 設計: `docs/mcp-server-design.md`
 - 運用: `docs/operation-scenarios.md`
 - 調査: `research/copilot-instructions-research.md`
-- バックログ: `docs/PRODUCT_BACKLOG.md` - 将来実装すべき機能（外部変更検知等）
+- バックログ: `docs/planning/product-backlog.md` - 将来実装すべき機能（外部変更検知等）
 
 ## テスト原則
 
