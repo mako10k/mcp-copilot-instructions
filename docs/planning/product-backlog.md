@@ -1,36 +1,37 @@
-# プロダクトバックログ
+# Product Backlog
 
-**作成日**: 2025年12月1日  
-**最終更新**: 2025年12月1日
-
----
-
-## 凡例
-
-- 🔴 Critical: システム安定性・データ整合性に関わる重要課題
-- 🟠 High: 実用性に大きく影響する機能
-- 🟡 Medium: UX改善・利便性向上
-- 🟢 Low: Nice to have、将来的な拡張
+**Created**: December 1, 2025  
+**Last Updated**: December 1, 2025
 
 ---
 
-## エピック一覧
+## Legend
 
-- **E1: 指示書外部記憶の基盤** ✅ (Phase 1完了)
-- **E2: ローレベルAST編集** ✅ (Phase 1完了)
-- **E3: ハイレベル文脈管理** ✅ (Phase 1完了)
-- **E4: 適応的指示生成とロールバック** 🔄 (Phase 2計画中)
-- **E5: フィードバックの記録と分析** 🔄 (Phase 2計画中)
-- **E6: 運用オートメーション（CI/最適化）** 📋 (Phase 3以降)
+- 🔴 Critical: Critical issues related to system stability and data integrity
+- 🟠 High: Features that significantly impact practicality
+- 🟡 Medium: UX improvements and convenience enhancements
+- 🟢 Low: Nice to have, future extensions
 
 ---
 
-## 完了済みストーリー (Phase 1)
+## Epic List
 
-### ✅ S1 (High): `.github/copilot-instructions.md`初期化と運用ポリシー記載
-- **AC**: 週次レビュー方針が明記され、CIで検知される
-- **完了日**: 2025年12月1日
-- **関連**: Scenario 1, 用語定義追加
+- **E1: Instruction External Memory Foundation** ✅ (Phase 1 Completed)
+- **E2: Low-Level AST Editing** ✅ (Phase 1 Completed)
+- **E3: High-Level Context Management** ✅ (Phase 1 Completed)
+- **E4: Adaptive Instruction Generation and Rollback** 🔄 (Phase 2 Planning)
+- **E5: Feedback Recording and Analysis** 🔄 (Phase 2 Planning)
+- **E6: Operational Automation (CI/Optimization)** 📋 (Phase 3+)
+- **E7: Goal Management and Progress Tracking** 🚀 (Phase 2 - In Progress)
+
+---
+
+## Completed Stories (Phase 1)
+
+### ✅ S1 (High): `.github/copilot-instructions.md` initialization and operational policy documentation
+- **AC**: Weekly review policy documented and detected by CI
+- **Completed**: December 1, 2025
+- **Related**: Scenario 1, terminology definitions added
 
 ### ✅ S2 (High): `guidance`ツールのMVP
 - **AC**: overview/getting-started/current-stateを返す
@@ -71,14 +72,137 @@
 
 ---
 
+## 🟠 High Priority (Phase 2 - Current Sprint)
+
+### PBI-010: Goal Management System Implementation
+
+**Category**: Context Management / Progress Tracking  
+**Priority**: 🟠 High  
+**Registered**: December 1, 2025  
+**Epic**: E7  
+**Status**: 🚀 In Progress
+
+#### Problem Statement
+
+During long development sessions spanning multiple days or weeks, both developers and AI assistants lose sight of the ultimate goal:
+1. **Getting lost in implementation details**: Focus on current task without remembering why
+2. **Context loss across sessions**: Each new chat session requires re-explanation of goals
+3. **No progress visibility**: Unclear what's completed and what remains
+4. **Attention dispersion**: Instructions bloat with historical context instead of current objectives
+
+Without persistent goal tracking, the project loses coherence and efficiency decreases over time.
+
+#### Requirements
+
+**1. Hierarchical Goal Structure**
+- Store goal hierarchy in `.copilot-instructions/goals/`
+  - `main-goal.md`: Ultimate project objective
+  - `hierarchy.json`: Complete goal tree with metadata
+  - `current-context.json`: Current focus and progress state
+- Support multiple levels: Main Goal → Sub-Goals → Tasks → Sub-tasks
+- Each goal has: id, title, description, status, parentId, childIds, order, timestamps
+
+**2. Goal Management Tool**
+- Implement `goal_management` MCP tool with actions:
+  - `create`: Create new goal
+  - `read`: Read goal(s) with filtering
+  - `update`: Update goal status/details
+  - `delete`: Delete goal
+  - `complete`: Mark goal as completed (auto-advances to next)
+  - `advance`: Manually advance to next goal
+  - `get-context`: Get current filtered goals for instructions
+  - `set-current`: Set current focus goal
+
+**3. Dynamic Goal Filtering**
+- Filter goals to show only relevant context (max 10-12 items):
+  - Ultimate goal (1 item)
+  - Current path from main to current (2-4 items)
+  - Sibling context: previous and next (2 items)
+  - Current goal's children (2-3 items)
+  - Recently completed (1-2 items)
+- Integrate with `generate_instructions` to include goal section
+
+**4. Integration with Existing Tools**
+- `change_context`: Auto-update current goal when phase changes
+- `generate_instructions`: Include filtered goals at top of instructions
+- Goal section always visible in `.github/copilot-instructions.md`
+
+**5. Progress Tracking**
+- Automatic advancement: Completing a goal sets next sibling as current
+- Recently completed list: Last 1-2 completed goals for continuity
+- Blocked goals: Track dependencies and blocked status
+
+#### Acceptance Criteria
+
+✅ **AC1**: Goal hierarchy stored in `.copilot-instructions/goals/`  
+✅ **AC2**: `goal_management` tool implemented with all 8 actions  
+✅ **AC3**: Filtering algorithm returns max 10-12 goal items  
+✅ **AC4**: Generated instructions always include current goals section  
+✅ **AC5**: Completing a goal auto-advances focus to next  
+✅ **AC6**: Goal context persists across chat sessions  
+✅ **AC7**: Integration with `change_context` working  
+
+#### Implementation Steps
+
+**Step 1: Storage and Data Structures** (Current)
+- [ ] Create `.copilot-instructions/goals/` directory structure
+- [ ] Define TypeScript interfaces for Goal, GoalHierarchy, CurrentContext
+- [ ] Implement JSON file read/write utilities
+- [ ] Create initial main-goal.md template
+
+**Step 2: Core Goal Management Tool**
+- [ ] Implement `goal_management` tool skeleton
+- [ ] Implement CRUD actions (create, read, update, delete)
+- [ ] Implement hierarchy navigation
+- [ ] Add validation and error handling
+
+**Step 3: Goal Filtering Algorithm**
+- [ ] Implement filtering logic (ultimate, path, siblings, children)
+- [ ] Implement `get-context` action
+- [ ] Format filtered goals for instruction display
+- [ ] Add recently completed tracking
+
+**Step 4: Auto-Advancement and Progress**
+- [ ] Implement `complete` action with auto-advance
+- [ ] Implement `advance` action for manual control
+- [ ] Update current-context.json on changes
+- [ ] Add blocked goals tracking
+
+**Step 5: Integration**
+- [ ] Integrate with `change_context` for auto-update
+- [ ] Integrate with `generate_instructions` to include goals
+- [ ] Add goal section to instruction template
+- [ ] Test cross-session persistence
+
+**Step 6: Testing and Documentation**
+- [ ] Write unit tests for all actions
+- [ ] Test with real development workflow
+- [ ] Update usage documentation
+- [ ] Add examples to scenarios
+
+#### Related Documents
+
+- Design: `docs/goal-management-system.md`
+- Scenario: `docs/operation-scenarios.md` (Scenario 0)
+- Epic: E7 - Goal Management and Progress Tracking
+
+#### Estimated Effort
+
+- Development: 2-3 days
+- Testing: 1 day
+- Documentation: 0.5 day
+- **Total**: 3.5-4.5 days
+
+---
+
 ## 🔴 Critical Priority (Phase 2)
 
-### PBI-001: 指示書の外部変更検知と競合管理
+### PBI-001: External Change Detection and Conflict Management for Instructions
 
-**カテゴリ**: File Management / Concurrency Control  
-**優先度**: 🔴 Critical  
-**登録日**: 2025年12月1日  
-**エピック**: E4
+**Category**: File Management / Concurrency Control  
+**Priority**: 🔴 Critical  
+**Registered**: December 1, 2025  
+**Epic**: E4
 
 #### 課題
 

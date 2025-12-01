@@ -20,7 +20,8 @@ import {
   readCurrentContext,
   writeCurrentContext,
   createInitialHierarchy,
-  createInitialContext
+  createInitialContext,
+  filterGoals
 } from '../utils/goalStorage.js';
 
 // Zod schema for parameter validation
@@ -332,6 +333,38 @@ async function updateGoal(params: GoalManagementParams): Promise<GoalManagementR
 }
 
 /**
+ * Get filtered context for display
+ */
+async function getContext(): Promise<GoalManagementResult> {
+  const initialized = await isInitialized();
+  if (!initialized) {
+    return {
+      success: false,
+      message: 'Goals not initialized',
+      error: 'Hierarchy file missing'
+    };
+  }
+  
+  const filteredGoals = await filterGoals();
+  if (!filteredGoals) {
+    return {
+      success: false,
+      message: 'Failed to filter goals',
+      error: 'Invalid hierarchy or context'
+    };
+  }
+  
+  const context = await readCurrentContext();
+  
+  return {
+    success: true,
+    message: 'Context retrieved successfully',
+    filteredGoals,
+    currentContext: context ?? undefined
+  };
+}
+
+/**
  * Delete a goal
  */
 async function deleteGoal(params: GoalManagementParams): Promise<GoalManagementResult> {
@@ -418,10 +451,12 @@ export async function handleGoalManagement(params: unknown): Promise<GoalManagem
       case 'delete':
         return await deleteGoal(validated);
       
+      case 'get-context':
+        return await getContext();
+      
       // TODO: Implement remaining actions in Step 4
       case 'complete':
       case 'advance':
-      case 'get-context':
       case 'set-current':
         return {
           success: false,
