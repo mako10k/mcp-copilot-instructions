@@ -29,7 +29,12 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
     }
     case 'update': {
       try {
-        await updateSection(args.heading, args.content);
+        const result = await updateSection(args.heading, args.content);
+        
+        if (!result.success && result.conflict) {
+          return `⚠️ 競合エラー: ${result.conflict}`;
+        }
+        
         return `セクション「${args.heading}」を更新しました。`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

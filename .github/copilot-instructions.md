@@ -35,9 +35,7 @@
 
 ## テスト原則
 
-- Scenario 1, 2, 3を順次実装し、各段階で動作確認を行う。
-- MCPツール経由でのテストを優先し、実際の使用感を確認する。
-- ファイルI/O、JSON persistence、Markdown ASTの3つの基本パターンを確立する。
+これはテストセクションです。
 
 ## 実装状況
 
@@ -46,3 +44,8 @@
 - ✅ Scenario 3: instructions\_structure (Markdown AST) - セクション読み取り・更新
 - ✅ Scenario 4: project\_context完全CRUD - update/delete/filter実装、action混入バグ修正
 - ✅ Scenario 5: 実プロジェクト活用 - 本プロジェクトをMCPツールで管理、UX改善（summary表示追加）
+- ✅ Scenario 6: 外部変更検知（Phase 2開始） - SHA-256ハッシュによる競合検知、安全な書き込み機構
+
+## 存在しないセクション
+
+テスト

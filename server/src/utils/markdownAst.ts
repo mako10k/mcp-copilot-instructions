@@ -3,7 +3,13 @@ import remarkParse from 'remark-parse';
 import remarkStringify from 'remark-stringify';
 import { Root, Heading, Content } from 'mdast';
 import { toString } from 'mdast-util-to-string';
-import { readInstructionsFile, writeInstructionsFile } from './fileSystem';
+import {
+  readInstructionsFile,
+  writeInstructionsFile,
+  readInstructionsFileWithState,
+  writeInstructionsFileWithConflictCheck,
+  FileState,
+} from './fileSystem';
 
 export interface Section {
   level: number;
@@ -92,17 +98,19 @@ export async function readInstructionsSections(): Promise<Section[]> {
 }
 
 /**
- * セクションを追加または更新
+ * セクションを追加または更新（競合チェック付き）
  */
 export async function updateSection(
   heading: string,
   newContent: string
-): Promise<void> {
-  const content = await readInstructionsFile();
-  if (!content) {
+): Promise<{ success: boolean; conflict?: string }> {
+  // ファイル状態付きで読み込み
+  const result = await readInstructionsFileWithState();
+  if (!result) {
     throw new Error('指示書ファイルが存在しません');
   }
 
+  const { content, state } = result;
   const ast = parseMarkdown(content);
   let found = false;
 
@@ -127,6 +135,68 @@ export async function updateSection(
 
   if (!found) {
     // セクションが見つからない場合は末尾に追加
+    const headingNode: Heading = {
+      type: 'heading',
+      depth: 2,
+      children: [{ type: 'text', value: heading }],
+    };
+    const newAst = parseMarkdown(newContent);
+    ast.children.push(headingNode, ...newAst.children);
+  }
+
+  const updatedMarkdown = stringifyMarkdown(ast);
+
+  // 競合チェック付きで書き込み
+  const writeResult = await writeInstructionsFileWithConflictCheck(
+    updatedMarkdown,
+    state
+  );
+
+  if (!writeResult.success && writeResult.conflict) {
+    return {
+      success: false,
+      conflict: `${writeResult.conflict.message}\n\n` +
+        `期待ハッシュ: ${writeResult.conflict.expectedHash.substring(0, 8)}...\n` +
+        `現在ハッシュ: ${writeResult.conflict.currentHash.substring(0, 8)}...\n\n` +
+        `ファイルを再読み込みしてから再試行してください。`,
+    };
+  }
+
+  return { success: true };
+}
+
+/**
+ * セクションを追加または更新（従来版、後方互換性のため残す）
+ * @deprecated updateSection を使用してください（競合チェック付き）
+ */
+export async function updateSectionLegacy(
+  heading: string,
+  newContent: string
+): Promise<void> {
+  const content = await readInstructionsFile();
+  if (!content) {
+    throw new Error('指示書ファイルが存在しません');
+  }
+
+  const ast = parseMarkdown(content);
+  let found = false;
+
+  for (let i = 0; i < ast.children.length; i++) {
+    const node = ast.children[i];
+    if (node.type === 'heading' && toString(node) === heading) {
+      found = true;
+      const nextHeadingIndex = ast.children.findIndex(
+        (n, idx) => idx > i && n.type === 'heading'
+      );
+      const endIndex = nextHeadingIndex === -1 ? ast.children.length : nextHeadingIndex;
+
+      const newAst = parseMarkdown(newContent);
+      ast.children.splice(i + 1, endIndex - i - 1, ...newAst.children);
+      break;
+    }
+  }
+
+  if (!found) {
     const headingNode: Heading = {
       type: 'heading',
       depth: 2,

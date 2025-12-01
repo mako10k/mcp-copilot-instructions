@@ -561,3 +561,157 @@ await projectContext({
 - [x] UX改善: サマリー表示形式をデフォルト化
 - [x] 実用テストの知見を`lessons-learned`カテゴリで記録（2件）
 - [x] format='full'で詳細情報にアクセス可能
+
+---
+
+## シナリオ6: 外部変更検知と競合管理（Phase 2 - PBI-001 Step 1）
+
+### 目標
+- 指示書の外部変更（人間開発者の編集、Git操作等）を自動検知
+- 書き込み前にハッシュ値で競合をチェック
+- データロスを防ぐ安全機構の実装
+
+### 背景
+Phase 1では指示書更新時の競合チェックがなく、以下のリスクがあった:
+- 人間開発者が直接編集中にMCPツールが上書き
+- Git操作（checkout, merge等）後の不整合
+- 複数Copilotセッション間の競合
+
+### 実装内容
+
+#### 1. ファイル状態管理（fileSystem.ts）
+
+**新規インターフェース**:
+```typescript
+export interface FileState {
+  path: string;
+  hash: string;        // SHA-256ハッシュ値
+  timestamp: number;   // ファイル最終更新時刻（ミリ秒）
+}
+
+export interface ConflictInfo {
+  message: string;
+  expectedHash: string;
+  currentHash: string;
+  filePath: string;
+}
+```
+
+**新規関数**:
+- `readWithState(filePath)`: ファイル内容とハッシュ・タイムスタンプを返す
+- `readInstructionsFileWithState()`: 指示書を状態付きで読み込み
+- `writeWithConflictCheck(filePath, content, expectedState)`: 競合チェック付き書き込み
+- `writeInstructionsFileWithConflictCheck(content, expectedState)`: 指示書用ラッパー
+
+**実装の特徴**:
+- SHA-256ハッシュで内容の同一性を保証
+- 書き込み前に現在のハッシュと期待ハッシュを比較
+- 不一致時は`success: false`と`conflict`情報を返す
+
+#### 2. Markdown AST層の更新（markdownAst.ts）
+
+**updateSection関数の改修**:
+```typescript
+// 従来: Promise<void>
+// 新版: Promise<{ success: boolean; conflict?: string }>
+
+export async function updateSection(
+  heading: string,
+  newContent: string
+): Promise<{ success: boolean; conflict?: string }> {
+  // 1. 状態付きで読み込み
+  const result = await readInstructionsFileWithState();
+  
+  // 2. AST操作
+  // ... セクション更新処理 ...
+  
+  // 3. 競合チェック付きで書き込み
+  const writeResult = await writeInstructionsFileWithConflictCheck(
+    updatedMarkdown,
+    result.state
+  );
+  
+  if (!writeResult.success) {
+    return { success: false, conflict: formatConflictMessage(...) };
+  }
+  
+  return { success: true };
+}
+```
+
+**後方互換性**:
+- 従来の`updateSectionLegacy`を残し、既存コードが動作し続けることを保証
+
+#### 3. ツール層の更新（instructions_structure.ts）
+
+**エラーハンドリング追加**:
+```typescript
+case 'update': {
+  const result = await updateSection(args.heading, args.content);
+  
+  if (!result.success && result.conflict) {
+    return `⚠️ 競合エラー: ${result.conflict}`;
+  }
+  
+  return `セクション「${args.heading}」を更新しました。`;
+}
+```
+
+Copilot (LLM)に対して明確なエラーメッセージを返し、再試行を促す。
+
+### テスト結果
+
+**test-conflict-detection.ts**で以下を検証:
+
+#### テスト1: 正常系（競合なし）
+```
+✓ セクション更新成功
+```
+外部変更がない場合、通常通り更新可能。
+
+#### テスト2: 競合検知
+```
+✓ 競合を正しく検知しました
+  期待ハッシュ: 0e5e64e4...
+  現在ハッシュ: a3075148...
+  メッセージ: 外部変更が検知されました。ファイルが別のプロセスまたは
+             人間開発者によって変更されています。
+```
+ファイル読み込み後に外部変更を加えた場合、ハッシュ不一致を検知。
+
+#### テスト3: updateSection内部の競合回避
+```
+✓ updateSectionは内部で最新状態を読むため、この順序では競合しません
+```
+`updateSection`は呼び出し時に最新状態を読むため、関数呼び出し前の外部変更は問題にならない。
+**競合が起きるケース**: read → 外部変更 → write（現在は起きない、将来の拡張で考慮）
+
+#### テスト4: エラーハンドリング
+適切に例外をキャッチし、エラーメッセージを返す。
+
+### 実装の効果
+
+**安全性向上**:
+- データロスリスクの大幅削減
+- 人間開発者の編集を保護
+- Git操作後の不整合を検知
+
+**運用上の注意**:
+- Copilot (LLM)は競合エラー時に再試行が必要
+- 人間開発者は指示書更新中にMCPツールを使わないことを推奨
+- 将来の拡張: 3-way merge UI、自動リトライ、ロックファイル
+
+### 成功基準
+
+- [x] FileState型とハッシュ計算関数の実装
+- [x] readWithState/writeWithConflictCheck関数の実装
+- [x] updateSectionの競合チェック対応
+- [x] instructions_structureツールでの競合エラー表示
+- [x] 4つのテストシナリオすべてパス
+- [x] 後方互換性の維持（updateSectionLegacy）
+
+### 次のステップ（PBI-001 Step 2以降）
+
+- **Step 2**: Git状態確認機能（.git存在チェック、git status連携）
+- **Step 3**: 競合時の詳細diff表示
+- **Step 4**: 3-way merge UI実装
