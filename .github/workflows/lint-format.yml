@@ -1,0 +1,27 @@
+name: Lint and Format
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: |
+          cd server
+          npm install
+      - name: Run ESLint
+        run: |
+          cd server
+          npm run lint
+      - name: Run Prettier
+        run: |
+          cd server
+          npm run format

@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug MCP Server (ts-node)",
+      "program": "${workspaceFolder}/server/src/index.ts",
+      "cwd": "${workspaceFolder}/server",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "args": ["guidance", "--action", "overview"],
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/server/tsconfig.json"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "outFiles": ["${workspaceFolder}/server/dist/**/*.js"]
+    }
+  ]
+}

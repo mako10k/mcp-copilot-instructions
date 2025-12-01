@@ -1,0 +1,13 @@
+{
+	"servers": {
+		"copilot-instructions": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"ts-node",
+				"server/src/index.ts"
+			]
+		}
+	},
+	"inputs": []
+}

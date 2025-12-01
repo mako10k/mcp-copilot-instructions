@@ -15,5 +15,8 @@
     "prettier": "^3.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0"
   }
 }
