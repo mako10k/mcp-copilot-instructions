@@ -1,7 +1,16 @@
 # Copilot Custom Instructions for mcp-copilot-instructions
 
 - 主目的: LLMのコンテキスト制約を「指示書の動的更新」で突破し、AI挙動の安定化と再現性を確保する。
-- 主体: Copilotは毎ターン冒頭で本指示書を読み、差分を検知・遵守・更新する。
+- 主体: **Copilot (LLM自身)** は毎ターン冒頭で本指示書を読み、差分を検知・遵守・更新する。
+- 注意: 本プロジェクトでの「ユーザー」は主に**Copilot (LLM)**を指す。人間開発者はCopilot経由でMCPツールを使用。
+
+## 用語の定義
+
+- **Copilot**: GitHub Copilot (LLM)。本MCPサーバの主要利用者。自らMCPツールを呼び出してコンテキストを管理。
+- **人間開発者**: Copilotを使用する実際の開発者。Copilotに指示を出し、最終判断を行う。
+- **MCPツール**: Copilotが呼び出す3つのツール (`guidance`, `project_context`, `instructions_structure`)。
+- **指示書**: `.github/copilot-instructions.md`。Copilotが読むプロジェクト固有の指示。
+- **プロジェクトコンテキスト**: `.copilot-context/contexts.json`。制約・規約・パターン等の構造化情報。
 
 ## 運用ポリシー
 
@@ -12,8 +21,10 @@
 ## 実装原則
 
 - ツール定義は必ず`action`引数でCRUDを切替える。
-- 正誤例（✅/❌）を指示書に併記して、想起の安定性を高める。
-- 重要変更後は`adaptive_instructions(analyze)`で効果と副作用を検証し、必要ならロールバック。
+- 正誤例（✅/❌）を指示書に併記して、Copilot (LLM)の想起安定性を高める。
+- 重要変更後は、Copilot自身が効果と副作用を検証し、必要なら指示書を更新。
+- **Copilotの役割**: MCPツールを能動的に使用し、自らのコンテキストを管理・改善する。
+- **人間開発者の役割**: 最終判断、フィードバック提供、方針決定。
 
 ## 参照
 
