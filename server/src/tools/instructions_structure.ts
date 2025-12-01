@@ -5,6 +5,7 @@ import {
   resolveConflict,
 } from '../utils/markdownAst';
 import { readInstructionsFileWithState } from '../utils/fileSystem';
+import { withLock } from '../utils/lockManager';
 
 interface ReadStructureArgs {
   action: 'read';
@@ -80,7 +81,10 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
     case 'update': {
       try {
-        const result = await updateSection(args.heading, args.content);
+        // 排他制御を使用してセクション更新
+        const result = await withLock(async () => {
+          return await updateSection(args.heading, args.content);
+        });
 
         if (result.autoMerged) {
           return `✓ セクション「${args.heading}」を更新しました（他セクションの変更を自動マージ）。`;
@@ -93,6 +97,12 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
         return `セクション「${args.heading}」を更新しました。`;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        
+        // ロック取得失敗の場合は分かりやすいメッセージ
+        if (message.includes('Failed to acquire lock')) {
+          return `❌ ロック取得タイムアウト: 他のセッションが指示書を更新中です。しばらく待ってから再試行してください。`;
+        }
+        
         return `エラー: ${message}`;
       }
     }
@@ -118,11 +128,14 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
 
     case 'resolve-conflict': {
       try {
-        const result = await resolveConflict(
-          args.heading,
-          args.resolution,
-          args.manualContent
-        );
+        // 排他制御を使用して競合解決
+        const result = await withLock(async () => {
+          return await resolveConflict(
+            args.heading,
+            args.resolution,
+            args.manualContent
+          );
+        });
 
         if (!result.success) {
           return `エラー: ${result.error}`;
