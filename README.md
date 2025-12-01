@@ -41,6 +41,23 @@ Unless specifically noted, "user" refers to **Copilot (LLM) itself**.
 - Change retention: Reflect decisions made in conversations into instructions and context
 - Conflict management: Explicitly invalidate old rules and prioritize new rules
 
+## Key Features (Phase 2 Complete)
+- ✅ **Goal Management System**: Hierarchical goal tracking with auto-advancement, never lose sight of objectives
+- ✅ **Conflict Detection**: External change detection with safe resolution
+- ✅ **History Management**: Rollback capability with 30-day retention
+- ✅ **Dynamic Generation**: Context-aware instruction filtering
+- ✅ **Feedback System**: Critical feedback tracking with hard/soft limits
+
+## Available MCP Tools
+1. **guidance**: Usage guide and current status
+2. **project_context**: CRUD operations for project context
+3. **instructions_structure**: Markdown AST operations with conflict management
+4. **change_context**: Development context switching with auto-regeneration
+5. **feedback**: Critical feedback tracking
+6. **onboarding**: Migration support for existing projects
+7. **goal_management**: Hierarchical goal tracking and progress management (NEW)
+
 ## Next Development Steps
-- Implementation of MCP tool suite (guidance / instructions_structure / project_context / user_feedback / adaptive_instructions)
-- Enable automated weekly review checks in CI
+- Integration testing and CI/CD setup
+- Performance optimization for large instruction sets
+- Enhanced analytics for instruction effectiveness
