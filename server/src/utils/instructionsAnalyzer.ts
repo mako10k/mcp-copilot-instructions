@@ -156,8 +156,8 @@ export function extractSections(content: string): Section[] {
     if (match) {
       // 前のセクションを保存
       if (currentSection) {
-        currentSection.content = currentSection.lines.join('\n').trim();
-        sections.push(currentSection);
+        (currentSection as Section).content = (currentSection as Section).lines.join('\n').trim();
+        sections.push(currentSection as Section);
       }
       // 新しいセクションを開始
       currentSection = {
@@ -165,16 +165,16 @@ export function extractSections(content: string): Section[] {
         lines: [],
         startLine: index + 1,
         content: ''
-      };
+      } as Section;
     } else if (currentSection) {
-      currentSection.lines.push(line);
+      (currentSection as Section).lines.push(line);
     }
   });
   
   // 最後のセクションを保存
   if (currentSection) {
-    currentSection.content = currentSection.lines.join('\n').trim();
-    sections.push(currentSection);
+    (currentSection as Section).content = (currentSection as Section).lines.join('\n').trim();
+    sections.push(currentSection as Section);
   }
   
   return sections;
@@ -185,19 +185,17 @@ export function extractSections(content: string): Section[] {
  * 
  * めちゃくちゃな状態の指示書から問題を検出
  */
-export function detectProblems(
-  content: string, 
-  lines: string[]
-): Array<{
+type Problem = {
   type: 'contradiction' | 'duplication' | 'unclear';
   description: string;
   locations: Array<{ line: number; text: string }>;
-}> {
-  const problems: Array<{
-    type: 'contradiction' | 'duplication' | 'unclear';
-    description: string;
-    locations: Array<{ line: number; text: string }>;
-  }> = [];
+};
+
+export function detectProblems(
+  content: string, 
+  lines: string[]
+): Problem[] {
+  const problems: Problem[] = [];
   
   // 1. 重複セクション検出
   const headings = new Map<string, number[]>();

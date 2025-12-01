@@ -1,7 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { DevelopmentContext } from './generateInstructions';
-import { calculateHash } from './fileSystem';
 
 /**
  * 履歴エントリ

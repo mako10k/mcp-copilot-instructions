@@ -265,7 +265,7 @@ const test4 = test('Pattern 4 (messy): 問題あり → analyze → 制限モー
   assert(status.pattern === 'messy', 'pattern should be messy');
   assert(status.status === 'analyzed', 'status should be analyzed');
   assert(status.restrictedMode === true, 'restrictedMode should be true');
-  assert(status.problems && status.problems.length > 0, 'should detect problems');
+  assert(!!(status.problems && status.problems.length > 0), 'should detect problems');
   assert(result.includes('問題が検出'), 'result should mention problems');
   assert(result.includes('機能制限モード'), 'result should mention restricted mode');
   

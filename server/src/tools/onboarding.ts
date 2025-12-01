@@ -14,7 +14,6 @@ import {
   getOnboardingStatus, 
   saveOnboardingStatus, 
   OnboardingStatus,
-  completeOnboarding,
   skipOnboarding
 } from '../utils/onboardingStatusManager';
 import { 

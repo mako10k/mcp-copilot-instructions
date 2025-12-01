@@ -6,7 +6,6 @@ import {
   getHistoryByTimestamp, 
   calculateDiff,
   cleanupOldHistory,
-  HistoryEntry,
 } from '../utils/historyManager';
 import { isRestrictedMode } from '../utils/onboardingStatusManager';
 
