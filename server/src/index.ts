@@ -116,7 +116,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: 'change_context',
         description:
           'Change development context/state to trigger automatic instructions regeneration. ' +
-          'Setting phase/focus/priority/mode extracts only relevant instructions to .github/copilot-instructions.md.',
+          'WARNING: This OVERWRITES .github/copilot-instructions.md with dynamically generated content. ' +
+          'Before using this tool, you MUST migrate instructions to .copilot-instructions/ directory structure. ' +
+          'Using this on a monolithic .github/copilot-instructions.md will DESTROY the original content. ' +
+          'Run onboarding({ action: "analyze" }) first to check migration status.',
         inputSchema: {
           type: 'object',
           properties: {

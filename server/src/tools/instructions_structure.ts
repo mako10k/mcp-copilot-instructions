@@ -59,12 +59,24 @@ export async function instructionsStructure(args: InstructionsStructureArgs) {
     const restricted = await isRestrictedMode();
     if (restricted) {
       return (
-        '❗ Restricted Mode: This action is not available.\n\n' +
-        'Please complete onboarding or use in read-only mode.\n\n' +
-        '[Check Details]\n' +
-        'onboarding({ action: "status" })\n\n' +
-        '[Onboarding]\n' +
-        'onboarding({ action: "analyze" })'
+        '❌ Restricted Mode: This action is not available.\n\n' +
+        '⚠️ CRITICAL: Your .github/copilot-instructions.md has NOT been migrated yet.\n' +
+        'Instructions are still in monolithic format (single file).\n\n' +
+        '🔥 DANGER: Modifying the monolithic file directly is risky:\n' +
+        '- No version control or rollback for individual sections\n' +
+        '- No conflict detection between concurrent edits\n' +
+        '- No structured management capabilities\n\n' +
+        '【Why This is Blocked】\n' +
+        '1. instructions_structure expects .copilot-instructions/ directory structure\n' +
+        '2. Your instructions are NOT in that directory yet (still monolithic)\n' +
+        '3. Editing now would bypass safety mechanisms\n\n' +
+        '【Required Steps】\n' +
+        '1. Analyze: onboarding({ action: "analyze" })\n' +
+        '2. Migrate: onboarding({ action: "propose" }) then approve\n' +
+        '3. After migration, all instructions_structure features become available\n\n' +
+        '【Read-Only Access】\n' +
+        'You can still use: instructions_structure({ action: "read" })\n' +
+        'To view current structure without modifications.'
       );
     }
   }
