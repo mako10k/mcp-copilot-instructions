@@ -106,15 +106,15 @@ export async function saveOnboardingStatus(
  * Check if in restricted mode
  *
  * Restricted mode conditions:
- * - status is 'analyzed' and pattern is 'unstructured' or 'messy'
+ * - status is 'analyzed' and pattern is 'unstructured', 'messy', or 'structured' (before confirmation)
  * - status is 'proposed' and not yet approved
  * - status is 'rejected'
  * - .github/copilot-instructions.md exists but onboarding not started (CRITICAL)
  *
  * Not restricted mode conditions:
  * - status is 'not_started' AND no existing .github/copilot-instructions.md
- * - status is 'completed' or 'skipped'
- * - pattern is 'clean' or 'structured'
+ * - status is 'completed' or 'skipped' (user confirmed)
+ * - pattern is 'clean' (no existing file to protect)
  */
 export async function isRestrictedMode(): Promise<boolean> {
   const status = await getOnboardingStatus();
@@ -140,6 +140,16 @@ export async function isRestrictedMode(): Promise<boolean> {
     }
   }
 
+  // If analyzed but not yet confirmed (status not completed/skipped), stay restricted
+  if (
+    status.status === 'analyzed' &&
+    status.pattern !== 'clean' &&
+    status.pattern !== undefined
+  ) {
+    // Even for structured pattern, require explicit confirmation
+    return true;
+  }
+
   return false;
 }
 
@@ -148,8 +158,8 @@ export async function isRestrictedMode(): Promise<boolean> {
  *
  * Completion conditions:
  * - status is 'completed' (migration completed)
- * - status is 'skipped' (user chose to skip)
- * - pattern is 'clean' or 'structured' and status is 'analyzed' (compatible)
+ * - status is 'skipped' (user confirmed no migration needed)
+ * - pattern is 'clean' and status is 'completed' (no existing file)
  */
 export async function isOnboardingCompleted(): Promise<boolean> {
   const status = await getOnboardingStatus();
@@ -159,11 +169,8 @@ export async function isOnboardingCompleted(): Promise<boolean> {
     return true;
   }
 
-  // Consider analyzed as completed for compatible patterns
-  if (
-    status.status === 'analyzed' &&
-    (status.pattern === 'clean' || status.pattern === 'structured')
-  ) {
+  // For clean pattern, can proceed immediately (no file to protect)
+  if (status.status === 'analyzed' && status.pattern === 'clean') {
     return true;
   }
 
