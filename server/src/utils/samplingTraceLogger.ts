@@ -73,7 +73,9 @@ export async function listSamplingTraces(): Promise<string[]> {
 /**
  * Read a specific sampling trace
  */
-export async function readSamplingTrace(filename: string): Promise<SamplingTrace | null> {
+export async function readSamplingTrace(
+  filename: string,
+): Promise<SamplingTrace | null> {
   try {
     const filepath = path.join(TRACE_DIR, filename);
     const content = await fs.readFile(filepath, 'utf-8');
@@ -86,7 +88,9 @@ export async function readSamplingTrace(filename: string): Promise<SamplingTrace
 /**
  * Get recent traces (last N)
  */
-export async function getRecentTraces(limit: number = 10): Promise<SamplingTrace[]> {
+export async function getRecentTraces(
+  limit: number = 10,
+): Promise<SamplingTrace[]> {
   const filenames = await listSamplingTraces();
   const traces: SamplingTrace[] = [];
 
@@ -103,7 +107,9 @@ export async function getRecentTraces(limit: number = 10): Promise<SamplingTrace
 /**
  * Clean up old traces (older than N days)
  */
-export async function cleanupOldTraces(daysToKeep: number = 30): Promise<number> {
+export async function cleanupOldTraces(
+  daysToKeep: number = 30,
+): Promise<number> {
   const filenames = await listSamplingTraces();
   const cutoffTime = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
   let deletedCount = 0;

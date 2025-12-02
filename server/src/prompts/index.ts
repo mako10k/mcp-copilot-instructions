@@ -22,43 +22,51 @@ export function getAvailablePrompts(): PromptDefinition[] {
   return [
     {
       name: 'create-convention',
-      description: 'Generate a new coding convention document with proper structure and frontmatter',
+      description:
+        'Generate a new coding convention document with proper structure and frontmatter',
       arguments: [
         {
           name: 'language',
-          description: 'Programming language (e.g., TypeScript, Python, Go, Rust)',
+          description:
+            'Programming language (e.g., TypeScript, Python, Go, Rust)',
           required: true,
         },
         {
           name: 'focus',
-          description: 'Convention focus area (e.g., naming, error-handling, testing, formatting)',
+          description:
+            'Convention focus area (e.g., naming, error-handling, testing, formatting)',
           required: true,
         },
       ],
     },
     {
       name: 'generate-phase-instructions',
-      description: 'Create phase-specific instruction subset from existing instructions',
+      description:
+        'Create phase-specific instruction subset from existing instructions',
       arguments: [
         {
           name: 'phase',
-          description: 'Development phase: development, refactoring, testing, debugging, or documentation',
+          description:
+            'Development phase: development, refactoring, testing, debugging, or documentation',
           required: true,
         },
         {
           name: 'focus',
-          description: 'Optional focus areas as comma-separated list (e.g., "API,JWT,authentication")',
+          description:
+            'Optional focus areas as comma-separated list (e.g., "API,JWT,authentication")',
           required: false,
         },
       ],
     },
     {
       name: 'analyze-conflicts',
-      description: 'Detect contradictions or overlaps between instruction files',
+      description:
+        'Detect contradictions or overlaps between instruction files',
       arguments: [
         {
           name: 'category',
-          description: 'Category to analyze: conventions, patterns, architecture, phases, tools, or "all"',
+          description:
+            'Category to analyze: conventions, patterns, architecture, phases, tools, or "all"',
           required: false,
         },
       ],
@@ -71,8 +79,10 @@ export function getAvailablePrompts(): PromptDefinition[] {
  */
 export async function getPromptContent(
   name: string,
-  args?: Record<string, string>
-): Promise<{ role: 'user' | 'assistant'; content: { type: 'text'; text: string } }[]> {
+  args?: Record<string, string>,
+): Promise<
+  { role: 'user' | 'assistant'; content: { type: 'text'; text: string } }[]
+> {
   switch (name) {
     case 'create-convention':
       return generateCreateConventionPrompt(args);
@@ -89,7 +99,7 @@ export async function getPromptContent(
  * Generate "create-convention" prompt
  */
 function generateCreateConventionPrompt(
-  args?: Record<string, string>
+  args?: Record<string, string>,
 ): { role: 'user'; content: { type: 'text'; text: string } }[] {
   const language = args?.language || 'TypeScript';
   const focus = args?.focus || 'general';
@@ -162,7 +172,7 @@ Please generate the complete convention document following this template.`;
  * Generate "generate-phase-instructions" prompt
  */
 function generatePhaseInstructionsPrompt(
-  args?: Record<string, string>
+  args?: Record<string, string>,
 ): { role: 'user'; content: { type: 'text'; text: string } }[] {
   const phase = args?.phase || 'development';
   const focus = args?.focus || '';
@@ -225,7 +235,7 @@ Please analyze the workspace and generate the filtered instruction document.`;
  * Generate "analyze-conflicts" prompt
  */
 function generateAnalyzeConflictsPrompt(
-  args?: Record<string, string>
+  args?: Record<string, string>,
 ): { role: 'user'; content: { type: 'text'; text: string } }[] {
   const category = args?.category || 'all';
 

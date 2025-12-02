@@ -16,13 +16,13 @@ import { writeInstructionsFile } from '../utils/fileSystem.js';
 function createMockServer(): Server {
   const server = new Server(
     { name: 'test-server', version: '1.0.0' },
-    { capabilities: { tools: {} } }
+    { capabilities: { tools: {} } },
   );
 
   // Mock createMessage to return a simple narrative
   (server as any).createMessage = async (params: any) => {
     const userMessage = params.messages[0]?.content?.text || '';
-    
+
     if (userMessage.includes('analyzing existing Copilot instructions')) {
       return {
         role: 'assistant',
@@ -65,7 +65,9 @@ export async function testAnalyzeWithSampling(): Promise<void> {
   console.log('Testing analyze with MCP sampling...');
 
   // Setup: Create mock structured instructions
-  await writeInstructionsFile('## Section 1\nContent\n\n## Section 2\nMore content');
+  await writeInstructionsFile(
+    '## Section 1\nContent\n\n## Section 2\nMore content',
+  );
 
   // Reset onboarding status
   const initialStatus: OnboardingStatus = {
@@ -84,7 +86,10 @@ export async function testAnalyzeWithSampling(): Promise<void> {
   const result = await onboarding({ action: 'analyze' });
 
   // Verify sampling was used (should contain narrative text)
-  if (!result.includes('Analysis Report') && !result.includes('Pattern detected')) {
+  if (
+    !result.includes('Analysis Report') &&
+    !result.includes('Pattern detected')
+  ) {
     throw new Error('Expected sampling-generated narrative in analyze result');
   }
 
@@ -99,7 +104,9 @@ export async function testProposeWithSampling(): Promise<void> {
   console.log('Testing propose with MCP sampling...');
 
   // Setup: Create unstructured instructions
-  await writeInstructionsFile('Some unstructured text without sections.\nMore content here.');
+  await writeInstructionsFile(
+    'Some unstructured text without sections.\nMore content here.',
+  );
 
   // Set analyzed status
   const analyzedStatus: OnboardingStatus = {
@@ -148,7 +155,7 @@ export async function testSamplingFallback(): Promise<void> {
   // Set up failing mock server
   const failingServer = new Server(
     { name: 'failing-server', version: '1.0.0' },
-    { capabilities: { tools: {} } }
+    { capabilities: { tools: {} } },
   );
 
   (failingServer as any).createMessage = async () => {

@@ -4,7 +4,7 @@
  */
 
 import { readInstructionsFile } from '../utils/fileSystem.js';
-import { 
+import {
   readCurrentContext as readContextFromStorage,
   readHierarchy,
 } from '../utils/goalStorage.js';
@@ -26,7 +26,8 @@ export function getAvailableResources(): ResourceDefinition[] {
     {
       uri: 'instructions://active',
       name: 'Active Instructions',
-      description: 'Currently active instructions based on context (phase, focus, priority)',
+      description:
+        'Currently active instructions based on context (phase, focus, priority)',
       mimeType: 'text/markdown',
     },
     {
@@ -118,7 +119,8 @@ async function readActiveInstructions(): Promise<{
     return {
       uri: 'instructions://active',
       mimeType: 'text/markdown',
-      text: content || '# No Active Instructions\n\nInstructions file is empty.',
+      text:
+        content || '# No Active Instructions\n\nInstructions file is empty.',
     };
   } catch {
     return {
@@ -139,7 +141,7 @@ async function readGoalHierarchy(): Promise<{
 }> {
   try {
     const hierarchy = await readHierarchy();
-    
+
     if (!hierarchy) {
       return {
         uri: 'instructions://goals/hierarchy',
@@ -147,7 +149,7 @@ async function readGoalHierarchy(): Promise<{
         text: JSON.stringify({ message: 'No goals defined yet' }, null, 2),
       };
     }
-    
+
     return {
       uri: 'instructions://goals/hierarchy',
       mimeType: 'application/json',
@@ -172,7 +174,7 @@ async function readCurrentGoal(): Promise<{
 }> {
   try {
     const hierarchy = await readHierarchy();
-    
+
     if (!hierarchy) {
       return {
         uri: 'instructions://goals/current',
@@ -183,13 +185,19 @@ async function readCurrentGoal(): Promise<{
 
     // Find goal in progress
     const goalEntries = Object.entries(hierarchy.goals);
-    const currentGoalEntry = goalEntries.find(([, goal]: [string, any]) => goal.status === 'in-progress');
-    
+    const currentGoalEntry = goalEntries.find(
+      ([, goal]: [string, any]) => goal.status === 'in-progress',
+    );
+
     if (!currentGoalEntry) {
       return {
         uri: 'instructions://goals/current',
         mimeType: 'application/json',
-        text: JSON.stringify({ message: 'No goal currently in progress' }, null, 2),
+        text: JSON.stringify(
+          { message: 'No goal currently in progress' },
+          null,
+          2,
+        ),
       };
     }
 
@@ -226,13 +234,17 @@ async function readCurrentContext(): Promise<{
     return {
       uri: 'instructions://context/current',
       mimeType: 'application/json',
-      text: JSON.stringify({
-        phase: 'development',
-        focus: [],
-        priority: 'medium',
-        mode: 'normal',
-        message: 'Using default context',
-      }, null, 2),
+      text: JSON.stringify(
+        {
+          phase: 'development',
+          focus: [],
+          priority: 'medium',
+          mode: 'normal',
+          message: 'Using default context',
+        },
+        null,
+        2,
+      ),
     };
   }
 }
@@ -250,7 +262,7 @@ async function readCategoryInstructions(category: string): Promise<{
 
   try {
     const files = await fs.readdir(categoryPath);
-    const markdownFiles = files.filter(f => f.endsWith('.md'));
+    const markdownFiles = files.filter((f) => f.endsWith('.md'));
 
     if (markdownFiles.length === 0) {
       return {
@@ -268,7 +280,7 @@ async function readCategoryInstructions(category: string): Promise<{
     for (const file of markdownFiles.sort()) {
       const filePath = path.join(categoryPath, file);
       const content = await fs.readFile(filePath, 'utf-8');
-      
+
       aggregatedContent += `## File: \`${category}/${file}\`\n\n`;
       aggregatedContent += content;
       aggregatedContent += '\n\n---\n\n';
