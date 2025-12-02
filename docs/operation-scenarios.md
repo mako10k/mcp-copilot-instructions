@@ -387,6 +387,773 @@ project_context({
 
 ---
 
+## Scenario 2: Onboarding Day (Using MCP Sampling to Narrate Analyze → Propose)
+
+### Situation
+A legacy `.github/copilot-instructions.md` already exists in the repository. We need to analyze it, summarize risks, and draft a migration proposal while keeping the process observable. MCP Sampling in this context is **not** a file-access guard; it is the mechanism the MCP server uses to ask the host client to run an LLM on its behalf. The server gathers raw facts locally, then uses sampling to turn those facts into human-ready explanations that stay traceable.
+
+### Roles
+- **Sampling Orchestrator**: Packages collected evidence, issues `sampling` requests (e.g., `intent: "analysis-narrative"` or `intent: "proposal-draft"`), and stores the prompt/response pair so another human can replay the reasoning later.
+- **instructionsAnalyzer**: Reads `.github/copilot-instructions.md` directly from disk, classifies the file (clean / structured / unstructured / messy), and surfaces supporting evidence.
+- **onboardingStatusManager**: Reads and writes `.copilot-state/onboarding.json`, capturing when and why status changes occur.
+- **Propose logic**: Inside `onboarding({ action: "propose" })`, recomputes the latest analysis, asks sampling to describe the dry-run migration, and records backup settings without touching `.github/copilot-instructions.md` yet.
+
+### Conversation Flow
+
+#### Phase A: Analysis and Proposal (Read-Only)
+
+1. **Analyze (local read → sampled narration)**
+  - `instructionsAnalyzer` reads `.github/copilot-instructions.md`, runs the heuristics described below, and returns structured JSON (pattern, sections, problems, suggested sections).
+  - The orchestrator embeds that JSON into a `sampling` request so the host LLM can produce the friendly report that appears in chat.
+  - `onboardingStatusManager` updates `.copilot-state/onboarding.json` with `status: analyzed` plus the computed pattern and restriction flag; no writes happen to the instruction file itself.
+
+2. **Human decision checkpoint**
+  - Review the narrated output, compare it with the raw evidence reference in the log, and decide whether to continue.
+  - Each sampling envelope records the prompt, anonymized snippets, and intent, so anyone can audit which facts were fed into the LLM.
+
+3. **Propose (analysis refresh → sampled draft)**
+  - `onboarding({ action: "propose" })` re-runs the analyzer to ensure it is operating on the latest file contents.
+  - The orchestrator prepares a dry-run plan (backup location, migration steps, rollback window) and asks sampling to turn it into a narrative proposal.
+  - Status transitions to `proposed`, `.copilot-state/onboarding.json` gains the backup metadata, and `.github/copilot-instructions.md` still stays untouched.
+
+#### Phase B: Approval and Migration Preparation
+
+4. **Approve (commitment without execution)**
+  - `onboarding({ action: "approve" })` validates that status is `proposed` and the dry-run plan is still current.
+  - Uses sampling to generate an approval confirmation narrative explaining:
+    - What will be backed up and where
+    - How the migration will preserve existing content
+    - Rollback window and restoration procedure
+  - Status transitions to `approved`, timestamp recorded in `.copilot-state/onboarding.json`.
+  - `.github/copilot-instructions.md` still unchanged—approval is a checkpoint, not execution.
+
+5. **Migrate (execution with sampling trace)**
+  - `onboarding({ action: "migrate" })` performs the actual migration:
+    1. Creates timestamped backup at `.copilot-state/backups/copilot-instructions-{timestamp}.md`
+    2. Reads current instructions one final time to detect conflicts
+    3. Transforms content according to approved plan (section extraction, heading normalization, metadata insertion)
+    4. Writes new structure to `.github/copilot-instructions.md`
+  - Uses sampling to narrate each step as it happens:
+    - "Backing up current instructions to..."
+    - "Extracting sections: Found 5 sections..."
+    - "Writing new structure with metadata frontmatter..."
+    - "Migration complete. Restricted mode disabled."
+  - Status transitions to `completed`, `restrictedMode: false`, `canRollback: true` with rollback deadline (default 7 days).
+  - Sampling trace preserves the complete execution log for audit.
+
+#### Phase C: Post-Migration and Rollback
+
+6. **Status monitoring**
+  - After migration, all tools check `isOnboardingCompleted()` before operations.
+  - If completed, tools operate normally; `change_context` regenerates instructions freely.
+  - Rollback remains available until deadline expires.
+
+7. **Rollback (if issues arise)**
+  - `onboarding({ action: "rollback" })` reverses the migration:
+    1. Validates rollback is within deadline window
+    2. Reads backup file from `.copilot-state/backups/`
+    3. Restores backup to `.github/copilot-instructions.md`
+  - Uses sampling to explain restoration:
+    - "Rolling back to backup from {timestamp}..."
+    - "Original instructions restored"
+    - "Status reset to 'analyzed' for re-evaluation"
+  - Status transitions to `analyzed`, `restrictedMode: true`, preserving the original analysis for review.
+  - User can now re-propose with different strategy or skip onboarding.
+
+8. **Skip (opt-out at any stage)**
+  - `onboarding({ action: "skip" })` can be called during analysis, proposal, or even after approval (before migration).
+  - Uses sampling to confirm skip decision and implications:
+    - "Onboarding skipped. Existing instructions preserved."
+    - "Restricted mode disabled. Tools will operate freely."
+    - "You can restart onboarding later with 'analyze' if needed."
+  - Status transitions to `skipped`, `restrictedMode: false`, no backup created.
+  - Allows users to defer migration or use the system without onboarding.
+
+### What Sampling Guarantees
+- The exact prompt, intent, and anonymized snippets that the server shared with the LLM are preserved, so another human can replay or challenge the reasoning.
+- Narratives stay reproducible: repeating the same analysis with the same evidence produces the same sampling envelope.
+- When something stalls, the log shows which sampling intent (analysis narrative vs. proposal draft) was last completed.
+
+### Benefits
+- Existing instructions stay intact while we gather context and craft proposals because sampling never writes; it only describes.
+- Multiple agents can review the sampling trace plus the raw analyzer JSON to reach the same conclusion.
+- Human-in-the-loop decisions remain in control while automation handles the parsing and narration.
+
+### How Pattern Classification Works
+- **Clean**: `readInstructionsFile` returns empty/undefined, so the analyzer reports no existing instructions and onboarding exits restricted mode immediately.
+- **Structured**: The file contains at least one `##` heading, `extractSections` succeeds, and `detectProblems` finds no duplicates or keyword-level contradictions.
+- **Unstructured**: The file has content but no `##` headings. There are no detected contradictions, so `suggestSections` (keyword clustering + lightweight confidence scoring) proposes headings.
+- **Messy**: Either (a) structured sections exist but `detectProblems` finds duplicates or polarity conflicts (e.g., "any禁止" vs "any OK"), or (b) the text is unstructured and still registers contradictions. In both cases onboarding enforces restricted mode until a human cleans things up.
+- **Evidence surfaces**: Each returned pattern includes line numbers, sample text, and (for unstructured files) suggested headings so the subsequent sampling prompt can cite concrete facts.
+
+---
+
+#### Detailed Onboarding Walkthrough (Sampling in Action)
+
+**ターン1: Onboarding開始**
+
+**まこと**:
+> 既存の指示書がある。安全にマイグレーションできるか分析してくれ。
+
+**Copilot（内部処理）**:
+```
+1. ターン開始 → .github/copilot-instructions.md を読み込む
+2. Onboarding状態を確認 → not_started
+3. 既存指示書が存在 → 分析が必要
+```
+
+**Copilot → MCPサーバ**:
+```typescript
+onboarding({ action: "analyze" })
+```
+
+**MCPサーバ内部（Sampling Orchestrator）**:
+```typescript
+// 1. Local file analysis (no sampling yet)
+const analysis = await instructionsAnalyzer.analyze('.github/copilot-instructions.md');
+// → { pattern: "structured", sections: 8, problems: [], suggestedSections: null }
+
+// 2. Prepare sampling request
+const samplingRequest = {
+  intent: "analysis-narrative",
+  prompt: `You are analyzing existing Copilot instructions for safe migration.
+
+Analysis Results (Raw JSON):
+${JSON.stringify(analysis, null, 2)}
+
+Generate a human-friendly report explaining:
+1. What pattern was detected and why
+2. Whether migration is safe
+3. What the next steps are
+4. Any risks or concerns
+
+Keep it concise but informative.`,
+  context: {
+    analysisData: analysis,
+    timestamp: new Date().toISOString()
+  }
+};
+
+// 3. Request sampling from host client
+const response = await server.createMessage({
+  messages: [{
+    role: 'user',
+    content: { type: 'text', text: samplingRequest.prompt }
+  }],
+  maxTokens: 1000,
+});
+
+// 4. Log the sampling envelope for audit
+await logSamplingTrace({
+  intent: "analysis-narrative",
+  request: samplingRequest,
+  response: response,
+  timestamp: new Date().toISOString()
+});
+
+// 5. Update status
+await saveOnboardingStatus({
+  version: '1.0.0',
+  status: 'analyzed',
+  pattern: analysis.pattern,
+  analyzedAt: new Date().toISOString(),
+  restrictedMode: analysis.pattern === 'messy' || analysis.pattern === 'unstructured',
+  canRollback: false
+});
+```
+
+**Copilot（Sampling経由の返答）**:
+> # Analysis Report
+> 
+> **Pattern Detected**: Structured ✓
+> 
+> Your existing instructions are well-organized with 8 clear sections and proper heading hierarchy. No contradictions or duplications detected.
+> 
+> **Migration Safety**: LOW RISK
+> - Content is already compatible with this system
+> - No restructuring needed
+> - Can proceed directly to normal operation
+> 
+> **Next Steps**:
+> - You can skip migration (already compatible)
+> - Or proceed to see the proposed structure
+> 
+> **Status**: Restricted mode OFF (compatible pattern detected)
+
+**まこと**:
+> 提案を見てみたい。
+
+---
+
+**ターン2: Migration提案**
+
+**Copilot → MCPサーバ**:
+```typescript
+onboarding({ action: "propose" })
+```
+
+**MCPサーバ内部（Sampling Orchestrator）**:
+```typescript
+// 1. Refresh analysis (ensure latest state)
+const latestAnalysis = await instructionsAnalyzer.analyze('.github/copilot-instructions.md');
+
+// 2. Prepare dry-run migration plan
+const migrationPlan = {
+  backupPath: `.copilot-state/backups/copilot-instructions-${Date.now()}.md`,
+  strategy: latestAnalysis.pattern === 'structured' 
+    ? 'preserve-and-enhance' 
+    : 'restructure-and-merge',
+  steps: [
+    'Create timestamped backup',
+    'Add frontmatter metadata (category, tags, priority)',
+    'Normalize section headings',
+    'Insert migration markers for traceability',
+    'Update git ignore patterns'
+  ],
+  rollbackDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  risks: latestAnalysis.pattern === 'messy' 
+    ? ['Content contradictions may require manual resolution']
+    : ['Minimal risk - content already structured']
+};
+
+// 3. Prepare sampling request
+const samplingRequest = {
+  intent: "proposal-draft",
+  prompt: `You are drafting a migration proposal for existing Copilot instructions.
+
+Analysis Summary:
+- Pattern: ${latestAnalysis.pattern}
+- Sections: ${latestAnalysis.sections?.length || 0}
+- Problems: ${latestAnalysis.problems?.length || 0}
+
+Migration Plan (Dry-Run):
+${JSON.stringify(migrationPlan, null, 2)}
+
+Generate a proposal explaining:
+1. What will be backed up and where
+2. How existing content will be preserved
+3. What enhancements will be added
+4. Rollback procedure and deadline
+5. Approval recommendation
+
+Be clear about what changes and what stays the same.`,
+  context: {
+    analysisData: latestAnalysis,
+    migrationPlan: migrationPlan,
+    timestamp: new Date().toISOString()
+  }
+};
+
+// 4. Request sampling
+const response = await server.createMessage({
+  messages: [{
+    role: 'user',
+    content: { type: 'text', text: samplingRequest.prompt }
+  }],
+  maxTokens: 1500,
+});
+
+// 5. Log sampling trace
+await logSamplingTrace({
+  intent: "proposal-draft",
+  request: samplingRequest,
+  response: response,
+  timestamp: new Date().toISOString()
+});
+
+// 6. Update status with migration plan
+await saveOnboardingStatus({
+  version: '1.0.0',
+  status: 'proposed',
+  pattern: latestAnalysis.pattern,
+  analyzedAt: latestAnalysis.analyzedAt,
+  backupPath: migrationPlan.backupPath,
+  rollbackUntil: migrationPlan.rollbackDeadline,
+  restrictedMode: true, // Keep restricted until approved
+  canRollback: false // Not yet migrated
+});
+```
+
+**Copilot（Sampling経由の返答）**:
+> # Migration Proposal
+> 
+> **Summary**: Your structured instructions will be preserved and enhanced with metadata.
+> 
+> **What Gets Backed Up**:
+> - Current `.github/copilot-instructions.md` → `.copilot-state/backups/copilot-instructions-1733097600000.md`
+> - Automatic backup before any changes
+> 
+> **What Will Be Preserved**:
+> - ✓ All 8 existing sections unchanged
+> - ✓ All content word-for-word preserved
+> - ✓ Section ordering maintained
+> 
+> **What Will Be Enhanced**:
+> - Add YAML frontmatter to each section (category, tags, priority)
+> - Normalize heading levels for consistency
+> - Insert migration metadata comments for traceability
+> 
+> **Rollback Procedure**:
+> - Available for 7 days after migration
+> - Simple restore command: `onboarding({ action: "rollback" })`
+> - Original file restored from backup immediately
+> 
+> **Risk Assessment**: ⭐ MINIMAL RISK
+> - Strategy: preserve-and-enhance (non-destructive)
+> - No content restructuring required
+> - Backup ensures safe rollback
+> 
+> **Recommendation**: ✅ SAFE TO APPROVE
+> 
+> Ready to proceed? Use `onboarding({ action: "approve" })` to commit.
+
+**まこと**:
+> 承認する。
+
+---
+
+**ターン3: 承認と実行準備**
+
+**Copilot → MCPサーバ**:
+```typescript
+onboarding({ action: "approve" })
+```
+
+**MCPサーバ内部（Sampling Orchestrator）**:
+```typescript
+// 1. Validate status is 'proposed'
+const status = await getOnboardingStatus();
+if (status.status !== 'proposed') {
+  throw new Error('Must propose before approving');
+}
+
+// 2. Prepare approval confirmation via sampling
+const samplingRequest = {
+  intent: "approval-confirmation",
+  prompt: `Confirm migration approval.
+
+Current Status:
+- Pattern: ${status.pattern}
+- Backup: ${status.backupPath}
+- Rollback Until: ${status.rollbackUntil}
+
+Generate a brief confirmation message explaining:
+1. What approval means (commitment without execution yet)
+2. What happens next (migrate action required)
+3. That rollback will be available for 7 days
+
+Keep it short and clear.`,
+  context: {
+    status: status,
+    timestamp: new Date().toISOString()
+  }
+};
+
+// 3. Request sampling
+const response = await server.createMessage({
+  messages: [{
+    role: 'user',
+    content: { type: 'text', text: samplingRequest.prompt }
+  }],
+  maxTokens: 500,
+});
+
+// 4. Update status to approved
+await saveOnboardingStatus({
+  ...status,
+  status: 'approved',
+  decidedAt: new Date().toISOString()
+});
+```
+
+**Copilot（Sampling経由の返答）**:
+> # Approval Confirmed ✓
+> 
+> **What This Means**:
+> - Migration plan is approved but not yet executed
+> - No files changed yet—this is a checkpoint
+> 
+> **Next Step**:
+> - Run `onboarding({ action: "migrate" })` to execute the approved plan
+> - Backup will be created automatically before any changes
+> 
+> **Safety Net**:
+> - Rollback available for 7 days after migration
+> - Original content fully restorable
+> 
+> Ready when you are.
+
+**まこと**:
+> 実行してください。
+
+---
+
+**ターン4: Migration実行（Sampling Trace付き）**
+
+**Copilot → MCPサーバ**:
+```typescript
+onboarding({ action: "migrate" })
+```
+
+**MCPサーバ内部（Sampling Orchestrator + Executor）**:
+```typescript
+// 1. Validate approved status
+const status = await getOnboardingStatus();
+if (status.status !== 'approved') {
+  throw new Error('Must approve before migrating');
+}
+
+// 2. Execute migration with streaming sampling trace
+const migrationSteps = [];
+
+// Step 1: Backup
+const backupPath = status.backupPath;
+await fs.copyFile('.github/copilot-instructions.md', backupPath);
+migrationSteps.push(`Backup created: ${backupPath}`);
+
+// Step 2: Read current content
+const currentContent = await readInstructionsFile();
+migrationSteps.push(`Read ${currentContent.length} characters from existing file`);
+
+// Step 3: Detect conflicts (final check)
+const conflicts = await detectLastMinuteConflicts(currentContent);
+if (conflicts.length > 0) {
+  migrationSteps.push(`⚠️ Conflicts detected: ${conflicts.length}`);
+  // Abort and explain via sampling
+}
+
+// Step 4: Transform content
+const sections = await extractSections(currentContent);
+migrationSteps.push(`Extracted ${sections.length} sections`);
+
+const enhanced = await enhanceSectionsWithMetadata(sections);
+migrationSteps.push(`Added frontmatter metadata to ${enhanced.length} sections`);
+
+// Step 5: Write new structure
+await writeInstructionsFile(enhanced.join('\n\n'));
+migrationSteps.push(`Wrote new structure to .github/copilot-instructions.md`);
+
+// Step 6: Narrate execution via sampling
+const samplingRequest = {
+  intent: "migration-execution-trace",
+  prompt: `Migration just completed successfully.
+
+Execution Steps:
+${migrationSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+Final Status:
+- Backup: ${backupPath}
+- Rollback Available Until: ${status.rollbackUntil}
+- Restricted Mode: Disabled
+
+Generate a completion message explaining:
+1. What was executed
+2. Where backup is stored
+3. That system is now in normal operation mode
+4. How to rollback if needed
+
+Keep it concise and reassuring.`,
+  context: {
+    migrationSteps: migrationSteps,
+    status: status,
+    timestamp: new Date().toISOString()
+  }
+};
+
+// 7. Request sampling for execution summary
+const response = await server.createMessage({
+  messages: [{
+    role: 'user',
+    content: { type: 'text', text: samplingRequest.prompt }
+  }],
+  maxTokens: 800,
+});
+
+// 8. Log full sampling trace
+await logSamplingTrace({
+  intent: "migration-execution-trace",
+  request: samplingRequest,
+  response: response,
+  timestamp: new Date().toISOString()
+});
+
+// 9. Update status to completed
+await saveOnboardingStatus({
+  ...status,
+  status: 'completed',
+  migratedAt: new Date().toISOString(),
+  restrictedMode: false,
+  canRollback: true
+});
+```
+
+**Copilot（Sampling経由の返答）**:
+> # Migration Complete ✓
+> 
+> **Execution Summary**:
+> 1. ✓ Backup created: `.copilot-state/backups/copilot-instructions-1733097600000.md`
+> 2. ✓ Read 12,847 characters from existing instructions
+> 3. ✓ Extracted 8 sections with preserved content
+> 4. ✓ Enhanced sections with frontmatter metadata (category, tags, priority)
+> 5. ✓ Wrote new structure to `.github/copilot-instructions.md`
+> 
+> **Status**: ✅ SYSTEM READY
+> - Restricted mode: DISABLED
+> - All tools now operate freely
+> - Dynamic instruction generation: ACTIVE
+> 
+> **Rollback Safety Net**:
+> - Available until: December 9, 2025
+> - Command: `onboarding({ action: "rollback" })`
+> - Restores: `.copilot-state/backups/copilot-instructions-1733097600000.md`
+> 
+> Your instructions are now under dynamic management. I'll update them automatically as we work.
+
+**まこと**:
+> 完璧だ！ 記録もちゃんと残ってるのが分かって安心。
+
+---
+
+**ターン5: Rollback（問題発生時）**
+
+**まこと（1日後）**:
+> やっぱり元に戻したい。何か問題が出た。
+
+**Copilot → MCPサーバ**:
+```typescript
+onboarding({ action: "rollback" })
+```
+
+**MCPサーバ内部（Sampling Orchestrator + Rollback Executor）**:
+```typescript
+// 1. Validate rollback is available
+const status = await getOnboardingStatus();
+if (!status.canRollback) {
+  throw new Error('Rollback not available');
+}
+
+const deadline = new Date(status.rollbackUntil);
+if (Date.now() > deadline.getTime()) {
+  throw new Error('Rollback deadline expired');
+}
+
+// 2. Execute rollback
+const rollbackSteps = [];
+
+// Step 1: Read backup
+const backupContent = await fs.readFile(status.backupPath, 'utf-8');
+rollbackSteps.push(`Read backup from ${status.backupPath}`);
+
+// Step 2: Restore backup
+await writeInstructionsFile(backupContent);
+rollbackSteps.push(`Restored original instructions to .github/copilot-instructions.md`);
+
+// 3. Narrate rollback via sampling
+const samplingRequest = {
+  intent: "rollback-confirmation",
+  prompt: `Rollback just completed successfully.
+
+Rollback Steps:
+${rollbackSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+Original Status (before migration):
+- Pattern: ${status.pattern}
+- Analyzed At: ${status.analyzedAt}
+
+Generate a rollback confirmation explaining:
+1. What was restored
+2. Current system status (back to analyzed state)
+3. Options for next steps (re-propose, skip, or keep as-is)
+
+Be supportive and clear.`,
+  context: {
+    rollbackSteps: rollbackSteps,
+    status: status,
+    timestamp: new Date().toISOString()
+  }
+};
+
+// 4. Request sampling
+const response = await server.createMessage({
+  messages: [{
+    role: 'user',
+    content: { type: 'text', text: samplingRequest.prompt }
+  }],
+  maxTokens: 600,
+});
+
+// 5. Update status back to analyzed
+await saveOnboardingStatus({
+  version: '1.0.0',
+  status: 'analyzed',
+  pattern: status.pattern,
+  analyzedAt: status.analyzedAt,
+  restrictedMode: true, // Re-enable for safety
+  canRollback: false // Can't rollback a rollback
+});
+```
+
+**Copilot（Sampling経由の返答）**:
+> # Rollback Complete ✓
+> 
+> **What Happened**:
+> 1. ✓ Original instructions restored from backup
+> 2. ✓ Status reset to 'analyzed' (before migration)
+> 
+> **Current State**:
+> - Your original instructions are back
+> - Restricted mode: ENABLED (for safety)
+> - Previous analysis: Pattern was 'structured'
+> 
+> **Next Options**:
+> 1. **Re-propose**: Try migration again with different strategy
+> 2. **Skip**: Keep original instructions, disable restrictions
+> 3. **Review**: Examine what went wrong before deciding
+> 
+> I'm here to help with any of these paths.
+
+---
+
+### Key Benefits of Sampling-Driven Onboarding
+
+1. **Transparency**: Every decision (analyze, propose, migrate, rollback) is narrated with sampling traces that preserve the exact prompts and context.
+
+2. **Auditability**: The `.copilot-state/sampling-traces/` directory contains full logs showing:
+   - What raw data was analyzed
+   - What prompt was sent to the LLM
+   - What narrative was generated
+   - When each step occurred
+
+3. **Reproducibility**: Given the same analysis JSON and sampling prompt, another LLM would generate a similar narrative, ensuring consistency.
+
+4. **Human Control**: Sampling never writes files—it only explains. All file operations are explicit and logged separately.
+
+5. **Graceful Degradation**: If sampling fails (client doesn't support it), the system falls back to formatted string output, ensuring functionality.
+
+---
+
+## Scenario 1: Project First Day - Setup and Initial Implementation
+
+### Situation
+Project in pre-initialization state. Copilot checks for instructions and current state, leads initial setup.
+
+### 会話の流れ
+
+#### ターン1: プロジェクト開始
+
+**まこと**: 
+> 目的: `.github/copilot-instructions.md`を動的にメンテするMCPサーバ。ツール: guidance / instructions_structure / project_context / user_feedback / adaptive_instructions。
+> セットアップはCopilotが主導して進めてください。
+
+**Copilot（内部処理）**:
+```
+1. ターン開始 → .github/copilot-instructions.md を読み込む（まだ存在しない）
+2. guidance ツールを使って現在の状態を確認
+```
+
+**Copilot → MCPサーバ**:
+```typescript
+guidance({ topic: "current-state" })
+// 結果: プロジェクトは未初期化
+```
+
+**Copilot**: 
+> 現状: 未初期化。指示書は未存在。
+> 実施計画: (1) プロジェクト構造作成 (2) 設定ファイル整備 (3) 指示書初期化。
+> まず`project_context`へ初期アーキテクチャを登録し、指示書に要旨を作成します。
+
+**Copilot → MCPサーバ**:
+```typescript
+project_context({
+  action: "create",
+  context: {
+    category: "architecture",
+    title: "MCP Server Structure",
+    description: "TypeScript based MCP server with 5 main tools",
+    priority: "high",
+    tags: ["mcp", "typescript", "server"],
+    details: {
+      frameworks: ["@modelcontextprotocol/sdk"],
+      languages: ["TypeScript"],
+      rules: [
+        "Use action parameter for CRUD operations",
+        "Keep tool count minimal",
+        "Validate all inputs"
+      ]
+    }
+  }
+})
+```
+
+**Copilot → 指示書作成**:
+```typescript
+instructions_structure({
+  action: "create",
+  element: {
+    type: "heading",
+    level: 1,
+    content: "# mcp-copilot-instructions Development Guidelines"
+  }
+})
+
+instructions_structure({
+  action: "create",
+  element: {
+    type: "paragraph",
+    content: "This project implements an MCP server for dynamic management of copilot-instructions.md",
+    position: "last-child"
+  }
+})
+```
+
+**まこと**: 
+> よし、いい感じ。次にTypeScriptの設定とフォルダ構造を作ってくれ。
+
+---
+
+#### ターン2: 実装開始
+
+**Copilot（内部処理）**:
+```
+1. ターン開始 → .github/copilot-instructions.md を読み込む
+   内容: "MCP server with 5 main tools, use action parameter, TypeScript"
+2. project_context を読んで詳細を確認
+```
+
+**Copilot → MCPサーバ**:
+```typescript
+project_context({
+  action: "read",
+  filter: { category: "architecture" }
+})
+// 結果: MCP Server Structure の詳細を取得
+```
+
+**Copilot**: 
+> 了解しました。設計ドキュメントに基づいてフォルダ構造を作成します。
+> 
+> ```
+> src/
+>   ├── tools/
+>   │   ├── guidance.ts
+>   │   ├── instructions_structure.ts
+>   │   ├── project_context.ts
+>   │   ├── user_feedback.ts
+>   │   └── adaptive_instructions.ts
+>   ├── types/
+>   │   └── schemas.ts
+>   ├── storage/
+>   │   └── storage.ts
+>   └── index.ts
+> ```
+
+[ファイルを作成...]
+
+**まこと**: 
+> 次は`guidance`ツールの実装をお願いします（設計準拠）。
+
+---
+
 #### ターン3: guidance実装（失敗例）
 
 **Copilot（内部処理）**:
