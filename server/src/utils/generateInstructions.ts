@@ -128,6 +128,14 @@ async function loadAllInstructions(): Promise<ParsedInstruction[]> {
   try {
     await scanDirectory(instructionsDir);
   } catch (error) {
+    // If directory doesn't exist, it's a valid state (not yet migrated)
+    // Return empty array instead of throwing
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.warn(
+        `.copilot-instructions directory not found - no structured instructions available`,
+      );
+      return instructions;
+    }
     console.error('Failed to load instructions:', error);
   }
 
