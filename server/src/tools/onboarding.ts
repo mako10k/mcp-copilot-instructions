@@ -46,13 +46,6 @@ interface OnboardingArgs {
 }
 
 /**
- * Extra context from tool invocation (for elicitation)
- */
-interface OnboardingExtra {
-  sendRequest?: any;
-}
-
-/**
  * Elicitation Schema (JSON Schema subset for form mode)
  */
 interface ElicitationSchema {
@@ -1161,7 +1154,9 @@ Are you sure you want to proceed?`;
 
 /**
  * Generate approval confirmation narrative using MCP sampling
+ * @unused - Reserved for future enhancement
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function generateApprovalNarrative(status: OnboardingStatus): Promise<string> {
   if (!serverInstance) {
     throw new Error('Server instance not available for sampling');

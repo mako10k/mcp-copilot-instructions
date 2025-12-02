@@ -65,7 +65,7 @@ export async function listSamplingTraces(): Promise<string[]> {
       .filter((f) => f.endsWith('.json'))
       .sort()
       .reverse(); // Most recent first
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -78,7 +78,7 @@ export async function readSamplingTrace(filename: string): Promise<SamplingTrace
     const filepath = path.join(TRACE_DIR, filename);
     const content = await fs.readFile(filepath, 'utf-8');
     return JSON.parse(content);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
