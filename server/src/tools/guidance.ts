@@ -60,17 +60,24 @@ export async function guidance({ action }: { action: string }) {
         if (onboardingStatus.restrictedMode) {
           onboardingInfo +=
             '\n🔒 Restricted Mode: Some write operations are restricted.\n';
-          onboardingInfo += '\n⚠️  IMPORTANT: Restricted mode protects your existing .github/copilot-instructions.md\n';
-          onboardingInfo += 'from being overwritten. Instructions have NOT been migrated to .copilot-instructions/\n';
-          onboardingInfo += 'directory structure yet. Using change_context now would DESTROY your original content.\n\n';
+          onboardingInfo +=
+            '\n⚠️  IMPORTANT: Restricted mode protects your existing .github/copilot-instructions.md\n';
+          onboardingInfo +=
+            'from being overwritten. Instructions have NOT been migrated to .copilot-instructions/\n';
+          onboardingInfo +=
+            'directory structure yet. Using change_context now would DESTROY your original content.\n\n';
           onboardingInfo += '【Why Restricted】\n';
-          onboardingInfo += '- change_context OVERWRITES .github/copilot-instructions.md with generated content\n';
-          onboardingInfo += '- Your instructions are still in monolithic format (not migrated)\n';
-          onboardingInfo += '- Migration to .copilot-instructions/ structure required first\n\n';
+          onboardingInfo +=
+            '- change_context OVERWRITES .github/copilot-instructions.md with generated content\n';
+          onboardingInfo +=
+            '- Your instructions are still in monolithic format (not migrated)\n';
+          onboardingInfo +=
+            '- Migration to .copilot-instructions/ structure required first\n\n';
           onboardingInfo += '【Restricted Features】\n';
           onboardingInfo +=
             '- instructions_structure: update/delete/insert/resolve-conflict\n';
-          onboardingInfo += '- change_context: update/reset/rollback (would overwrite!)\n\n';
+          onboardingInfo +=
+            '- change_context: update/reset/rollback (would overwrite!)\n\n';
           onboardingInfo += '【Available Features】\n';
           onboardingInfo +=
             '- guidance, project_context, feedback (all operations)\n';

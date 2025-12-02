@@ -334,8 +334,7 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
       result += '[Next Steps]\n';
       result +=
         '1. Confirm no migration needed: onboarding({ action: "skip" })\n';
-      result +=
-        '   This will enable normal mode and all features.\n\n';
+      result += '   This will enable normal mode and all features.\n\n';
       result +=
         '2. Or, if you want to restructure: onboarding({ action: "propose" })\n';
       result += '   This will create a migration proposal (Phase B).';
