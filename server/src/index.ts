@@ -10,7 +10,7 @@ import { projectContext } from './tools/project_context.js';
 import { instructionsStructure } from './tools/instructions_structure.js';
 import { changeContext } from './tools/change_context.js';
 import { feedback } from './tools/feedback.js';
-import { onboarding } from './tools/onboarding.js';
+import { onboarding, setOnboardingServer } from './tools/onboarding.js';
 import { handleGoalManagement } from './tools/goal_management.js';
 
 const server = new Server(
@@ -24,6 +24,9 @@ const server = new Server(
     },
   },
 );
+
+// Pass server instance to onboarding for MCP sampling capability
+setOnboardingServer(server);
 
 // Publish tool list
 server.setRequestHandler(ListToolsRequestSchema, async () => {

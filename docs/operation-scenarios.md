@@ -387,6 +387,55 @@ project_context({
 
 ---
 
+## Scenario 2: Onboarding Day (Using MCP Sampling to Narrate Analyze → Propose)
+
+### Situation
+A legacy `.github/copilot-instructions.md` already exists in the repository. We need to analyze it, summarize risks, and draft a migration proposal while keeping the process observable. MCP Sampling in this context is **not** a file-access guard; it is the mechanism the MCP server uses to ask the host client to run an LLM on its behalf. The server gathers raw facts locally, then uses sampling to turn those facts into human-ready explanations that stay traceable.
+
+### Roles
+- **Sampling Orchestrator**: Packages collected evidence, issues `sampling` requests (e.g., `intent: "analysis-narrative"` or `intent: "proposal-draft"`), and stores the prompt/response pair so another human can replay the reasoning later.
+- **instructionsAnalyzer**: Reads `.github/copilot-instructions.md` directly from disk, classifies the file (clean / structured / unstructured / messy), and surfaces supporting evidence.
+- **onboardingStatusManager**: Reads and writes `.copilot-state/onboarding.json`, capturing when and why status changes occur.
+- **Propose logic**: Inside `onboarding({ action: "propose" })`, recomputes the latest analysis, asks sampling to describe the dry-run migration, and records backup settings without touching `.github/copilot-instructions.md` yet.
+
+### Conversation Flow
+1. **Analyze (local read → sampled narration)**
+  - `instructionsAnalyzer` reads `.github/copilot-instructions.md`, runs the heuristics described below, and returns structured JSON (pattern, sections, problems, suggested sections).
+  - The orchestrator embeds that JSON into a `sampling` request so the host LLM can produce the friendly report that appears in chat.
+  - `onboardingStatusManager` updates `.copilot-state/onboarding.json` with `status: analyzed` plus the computed pattern and restriction flag; no writes happen to the instruction file itself.
+
+2. **Human decision checkpoint**
+  - Review the narrated output, compare it with the raw evidence reference in the log, and decide whether to continue.
+  - Each sampling envelope records the prompt, anonymized snippets, and intent, so anyone can audit which facts were fed into the LLM.
+
+3. **Propose (analysis refresh → sampled draft)**
+  - `onboarding({ action: "propose" })` re-runs the analyzer to ensure it is operating on the latest file contents.
+  - The orchestrator prepares a dry-run plan (backup location, migration steps, rollback window) and asks sampling to turn it into a narrative proposal.
+  - Status transitions to `proposed`, `.copilot-state/onboarding.json` gains the backup metadata, and `.github/copilot-instructions.md` still stays untouched.
+
+4. **Next steps**
+  - `approve` / `migrate` (Phase B/C) will later use sampling again so the execution plan and the actual write are both explained and logged.
+  - Until approval, write-capable tools (e.g., `change_context`) stay in restricted mode, but that restriction is enforced by onboarding status—sampling merely narrates what happened.
+
+### What Sampling Guarantees
+- The exact prompt, intent, and anonymized snippets that the server shared with the LLM are preserved, so another human can replay or challenge the reasoning.
+- Narratives stay reproducible: repeating the same analysis with the same evidence produces the same sampling envelope.
+- When something stalls, the log shows which sampling intent (analysis narrative vs. proposal draft) was last completed.
+
+### Benefits
+- Existing instructions stay intact while we gather context and craft proposals because sampling never writes; it only describes.
+- Multiple agents can review the sampling trace plus the raw analyzer JSON to reach the same conclusion.
+- Human-in-the-loop decisions remain in control while automation handles the parsing and narration.
+
+### How Pattern Classification Works
+- **Clean**: `readInstructionsFile` returns empty/undefined, so the analyzer reports no existing instructions and onboarding exits restricted mode immediately.
+- **Structured**: The file contains at least one `##` heading, `extractSections` succeeds, and `detectProblems` finds no duplicates or keyword-level contradictions.
+- **Unstructured**: The file has content but no `##` headings. There are no detected contradictions, so `suggestSections` (keyword clustering + lightweight confidence scoring) proposes headings.
+- **Messy**: Either (a) structured sections exist but `detectProblems` finds duplicates or polarity conflicts (e.g., "any禁止" vs "any OK"), or (b) the text is unstructured and still registers contradictions. In both cases onboarding enforces restricted mode until a human cleans things up.
+- **Evidence surfaces**: Each returned pattern includes line numbers, sample text, and (for unstructured files) suggested headings so the subsequent sampling prompt can cite concrete facts.
+
+---
+
 #### ターン3: guidance実装（失敗例）
 
 **Copilot（内部処理）**:

@@ -10,6 +10,7 @@
  * - Rollback (rollback) ※Phase C
  */
 
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   getOnboardingStatus,
   saveOnboardingStatus,
@@ -37,6 +38,18 @@ interface OnboardingArgs {
 }
 
 /**
+ * Server instance for MCP sampling
+ */
+let serverInstance: Server | null = null;
+
+/**
+ * Set server instance for sampling capability
+ */
+export function setOnboardingServer(server: Server): void {
+  serverInstance = server;
+}
+
+/**
  * Main function for onboarding tool
  */
 export async function onboarding(args: OnboardingArgs): Promise<string> {
@@ -53,7 +66,6 @@ export async function onboarding(args: OnboardingArgs): Promise<string> {
     case 'propose':
       return await handlePropose();
 
-    case 'propose':
     case 'approve':
     case 'migrate':
     case 'rollback':
@@ -91,7 +103,18 @@ async function handleAnalyze(): Promise<string> {
 
   await saveOnboardingStatus(newStatus);
 
-  // Format and return results
+  // Use MCP sampling to generate human-friendly narrative if available
+  if (serverInstance) {
+    try {
+      const narrative = await generateAnalysisNarrative(analysis);
+      return narrative;
+    } catch (error) {
+      console.error('Sampling failed, falling back to formatted output:', error);
+      // Fall through to formatAnalysisResult
+    }
+  }
+
+  // Fallback: Format and return results
   return formatAnalysisResult(analysis);
 }
 
@@ -219,6 +242,125 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
 }
 
 /**
+ * Generate human-friendly analysis narrative using MCP sampling
+ */
+async function generateAnalysisNarrative(analysis: AnalysisResult): Promise<string> {
+  if (!serverInstance) {
+    throw new Error('Server instance not available for sampling');
+  }
+
+  const structuredData = JSON.stringify(
+    {
+      pattern: analysis.pattern,
+      exists: analysis.exists,
+      structured: analysis.structured,
+      unstructured: analysis.unstructured,
+      problems: analysis.problems,
+      recommendation: analysis.recommendation,
+    },
+    null,
+    2
+  );
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `You are analyzing existing Copilot instructions for onboarding.
+
+Analysis data:
+\`\`\`json
+${structuredData}
+\`\`\`
+
+Generate a clear, human-friendly report explaining:
+1. What pattern was detected (clean/structured/unstructured/messy)
+2. Key findings and evidence
+3. Whether restricted mode is active
+4. Recommended next steps
+
+Keep the tone professional but accessible.`,
+        },
+      },
+    ],
+    maxTokens: 1000,
+  });
+
+  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  if (content && content.type === 'text') {
+    return content.text;
+  }
+
+  throw new Error('Unexpected response format from sampling');
+}
+
+/**
+ * Generate human-friendly proposal narrative using MCP sampling
+ */
+async function generateProposalNarrative(
+  analysis: AnalysisResult,
+  proposalData: {
+    title: string;
+    summary: string;
+    steps: string[];
+    risk: string;
+    backupFile: string;
+    rollbackUntil: string;
+  }
+): Promise<string> {
+  if (!serverInstance) {
+    throw new Error('Server instance not available for sampling');
+  }
+
+  const structuredData = JSON.stringify(
+    {
+      pattern: analysis.pattern,
+      proposal: proposalData,
+      suggestedSections: analysis.unstructured?.suggestedSections?.slice(0, 5),
+    },
+    null,
+    2
+  );
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `You are creating a migration proposal for Copilot instructions onboarding.
+
+Proposal data:
+\`\`\`json
+${structuredData}
+\`\`\`
+
+Generate a clear, human-friendly proposal explaining:
+1. The proposed migration plan title and summary
+2. Step-by-step migration process
+3. Risk level and why
+4. Backup strategy and rollback deadline
+5. Suggested sections (if applicable)
+6. Next actions (approve/migrate/skip)
+
+Keep the tone encouraging and explain technical details clearly.`,
+        },
+      },
+    ],
+    maxTokens: 1200,
+  });
+
+  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  if (content && content.type === 'text') {
+    return content.text;
+  }
+
+  throw new Error('Unexpected response format from sampling');
+}
+
+/**
  * propose action: Generate migration proposal based on analysis
  * - Does NOT modify files
  * - Updates onboarding status to 'proposed' with rollback info
@@ -298,7 +440,26 @@ async function handlePropose(): Promise<string> {
 
   await saveOnboardingStatus(newStatus);
 
-  // Format proposal output
+  // Use MCP sampling to generate human-friendly narrative if available
+  if (serverInstance) {
+    try {
+      const proposalData = {
+        title,
+        summary,
+        steps,
+        risk,
+        backupFile,
+        rollbackUntil,
+      };
+      const narrative = await generateProposalNarrative(analysis, proposalData);
+      return narrative;
+    } catch (error) {
+      console.error('Sampling failed, falling back to formatted output:', error);
+      // Fall through to manual formatting
+    }
+  }
+
+  // Fallback: Format proposal output manually
   let output = '📝 Migration Proposal\n';
   output += '='.repeat(50) + '\n\n';
   output += `**Title**: ${title}\n`;
