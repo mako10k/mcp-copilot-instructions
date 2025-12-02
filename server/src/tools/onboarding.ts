@@ -51,6 +51,9 @@ export async function onboarding(args: OnboardingArgs): Promise<string> {
       return await handleSkip();
 
     case 'propose':
+      return await handlePropose();
+
+    case 'propose':
     case 'approve':
     case 'migrate':
     case 'rollback':
@@ -213,6 +216,119 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
   }
 
   return result;
+}
+
+/**
+ * propose action: Generate migration proposal based on analysis
+ * - Does NOT modify files
+ * - Updates onboarding status to 'proposed' with rollback info
+ */
+async function handlePropose(): Promise<string> {
+  const analysis = await analyzeInstructions();
+  const status = await getOnboardingStatus();
+
+  // Prepare proposal depending on pattern
+  let title = '';
+  let summary = '';
+  let steps: string[] = [];
+  let risk = 'low';
+
+  const now = new Date();
+  const backupDir = '.copilot-state/backup';
+  const backupFile = `${backupDir}/copilot-instructions.md.bak-${now.toISOString().replace(/[:.]/g, '-')}`;
+  const rollbackUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) // +7 days
+    .toISOString();
+
+  switch (analysis.pattern) {
+    case 'clean':
+      title = 'Initial Setup Proposal';
+      summary = '既存の指示書は存在しません。初期構成を作成します。';
+      steps = [
+        '1. .github/copilot-instructions.md を新規作成',
+        '2. 必須メタセクションとガイドを挿入 (tools, conventions)',
+        '3. 以降 change_context により動的生成を有効化',
+      ];
+      risk = 'low';
+      break;
+
+    case 'structured':
+      title = 'No Migration Needed';
+      summary = `既存の指示書は構造化されています (sections: ${analysis.structured!.sections.length}). そのまま利用可能です。`;
+      steps = [
+        '1. 変更なし。既存ファイルを尊重して利用',
+        '2. 必要に応じて instructions_structure でセクション編集',
+        '3. change_context でセクション抽出・生成を活用',
+      ];
+      risk = 'low';
+      break;
+
+    case 'unstructured':
+      title = 'Structuring Proposal';
+      summary = '非構造化の指示書を、提案セクションに基づき安全に構造化します。';
+      steps = [
+        '1. 現在の .github/copilot-instructions.md をバックアップ',
+        '2. 提案セクション（見出し + 本文）で新しい構造化ファイルを生成 (乾式: diff表示のみ)',
+        '3. セクションごとの差分を確認 (show-diff)',
+        '4. ユーザー承認後に上書き (migrate)',
+      ];
+      risk = 'medium';
+      break;
+
+    case 'messy':
+      title = 'Manual Fix Required';
+      summary = `問題のある箇所が検出されました (${analysis.problems!.length}件)。自動移行は推奨されません。`; 
+      steps = [
+        '1. 矛盾・重複・曖昧表現を手動で修正',
+        '2. 修正後に onboarding({ action: "analyze" }) を再実行',
+        '3. 互換性が確認できたら propose → migrate を検討',
+      ];
+      risk = 'high';
+      break;
+  }
+
+  // Update onboarding status to proposed (non-destructive)
+  const newStatus: OnboardingStatus = {
+    ...status,
+    status: 'proposed',
+    restrictedMode: analysis.pattern !== 'clean' && analysis.pattern !== 'structured',
+    backupPath: backupFile,
+    canRollback: true,
+    rollbackUntil,
+  };
+
+  await saveOnboardingStatus(newStatus);
+
+  // Format proposal output
+  let output = '📝 Migration Proposal\n';
+  output += '='.repeat(50) + '\n\n';
+  output += `**Title**: ${title}\n`;
+  output += `**Summary**: ${summary}\n`;
+  output += `**Risk**: ${risk}\n`;
+  output += `**Pattern**: ${analysis.pattern}\n\n`;
+
+  // Include suggested sections for unstructured
+  if (analysis.pattern === 'unstructured' && analysis.unstructured) {
+    output += '[Suggested Sections]\n';
+    analysis.unstructured.suggestedSections.slice(0, 8).forEach((s, i) => {
+      const conf = Math.round(s.confidence * 100);
+      output += `${i + 1}. ${s.heading} (confidence: ${conf}%)\n`;
+    });
+    output += '\n';
+  }
+
+  output += '[Steps]\n';
+  steps.forEach((s) => (output += `${s}\n`));
+
+  output += '\n[Rollback]\n';
+  output += `Backup (planned): ${backupFile}\n`;
+  output += `Deadline: ${rollbackUntil}\n`;
+
+  output += '\n[Next]\n';
+  output += '- Approve: onboarding({ action: "approve" }) ※未実装\n';
+  output += '- Migrate: onboarding({ action: "migrate" }) ※未実装\n';
+  output += '- Or skip: onboarding({ action: "skip" })\n';
+
+  return output;
 }
 
 /**
