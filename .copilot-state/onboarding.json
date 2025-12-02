@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "status": "proposed",
+  "canRollback": true,
+  "restrictedMode": false,
+  "pattern": "structured",
+  "analyzedAt": "2025-12-02T02:23:35.497Z",
+  "backupPath": ".copilot-state/backup/copilot-instructions.md.bak-2025-12-02T02-23-59-867Z",
+  "rollbackUntil": "2025-12-09T02:23:59.867Z"
+}

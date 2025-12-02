@@ -11,6 +11,7 @@
  */
 
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { ElicitResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
   getOnboardingStatus,
   saveOnboardingStatus,
@@ -45,15 +46,155 @@ interface OnboardingArgs {
 }
 
 /**
- * Server instance for MCP sampling
+ * Extra context from tool invocation (for elicitation)
+ */
+interface OnboardingExtra {
+  sendRequest?: any;
+}
+
+/**
+ * Elicitation Schema (JSON Schema subset for form mode)
+ */
+interface ElicitationSchema {
+  type: 'object';
+  properties: Record<
+    string,
+    {
+      type: string;
+      title?: string;
+      description?: string;
+      minimum?: number;
+      maximum?: number;
+      enum?: string[];
+      [key: string]: unknown;
+    }
+  >;
+  required?: string[];
+}
+
+/**
+ * Elicitation Response
+ */
+interface ElicitationResponse {
+  action: 'accept' | 'decline' | 'cancel';
+  content?: Record<string, unknown>;
+}
+
+/**
+ * Server instance for MCP sampling and elicitation
  */
 let serverInstance: Server | null = null;
 
 /**
- * Set server instance for sampling capability
+ * Set server instance for sampling and elicitation capability
  */
 export function setOnboardingServer(server: Server): void {
   serverInstance = server;
+}
+
+/**
+ * Create elicitation request for user approval
+ * 
+ * @param message - Message to display to the user
+ * @param schema - JSON Schema defining the form structure
+ * @returns Elicitation response with user's decision
+ * @throws Error if server instance is not available or response is invalid
+ */
+async function createElicitationRequest(
+  message: string,
+  schema: ElicitationSchema
+): Promise<ElicitationResponse> {
+  if (!serverInstance) {
+    throw new Error(
+      'Server instance not available for elicitation. ' +
+      'MCP Elicitation is required for user approval operations.'
+    );
+  }
+
+  const startTime = Date.now();
+
+  try {
+    const requestPayload = {
+      method: 'elicitation/create',
+      params: {
+        message,
+        requestedSchema: schema,
+        timeoutMs: 180000, // 3 minutes
+        level: 'question',
+      },
+    };
+
+    const response = await serverInstance.request(requestPayload, ElicitResultSchema);
+    const duration = Date.now() - startTime;
+
+    // Log elicitation trace
+    await logElicitationTrace(
+      'elicitation-request',
+      message,
+      schema,
+      response,
+      duration
+    );
+
+    if (response && typeof response === 'object' && 'action' in response) {
+      return response as ElicitationResponse;
+    }
+
+    throw new Error('Invalid elicitation response format');
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error('Elicitation request failed:', error);
+
+    // Log failed elicitation
+    await logElicitationTrace(
+      'elicitation-error',
+      message,
+      schema,
+      { action: 'cancel', error: error instanceof Error ? error.message : String(error) },
+      duration
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Log elicitation trace for audit purposes
+ */
+async function logElicitationTrace(
+  action: string,
+  message: string,
+  schema: ElicitationSchema,
+  response: unknown,
+  duration: number
+): Promise<void> {
+  try {
+    const traceDir = '.copilot-state/elicitation-traces';
+    await fs.mkdir(traceDir, { recursive: true });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${timestamp}-${action}.json`;
+    const filepath = path.join(traceDir, filename);
+
+    await fs.writeFile(
+      filepath,
+      JSON.stringify(
+        {
+          timestamp: new Date().toISOString(),
+          action,
+          message,
+          schema,
+          response,
+          duration_ms: duration,
+        },
+        null,
+        2
+      )
+    );
+  } catch (error) {
+    console.error('Failed to log elicitation trace:', error);
+    // Don't throw - logging failure should not block the operation
+  }
 }
 
 /**
@@ -644,12 +785,45 @@ async function handleApprove(): Promise<string> {
     return `⚠️ Cannot approve: Status is '${status.status}', must be 'proposed'.\n\nRun onboarding({ action: "propose" }) first.`;
   }
 
-  // Try sampling for approval confirmation
+  // Build elicitation message
+  const proposalSummary = status.proposal
+    ? `Title: ${status.proposal.title}\nSummary: ${status.proposal.summary}\n\nSteps:\n${status.proposal.steps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}`
+    : 'No proposal details available';
+
+  const elicitationMessage = `🔍 **Migration Proposal Approval**
+
+Do you approve this migration plan?
+
+${proposalSummary}
+
+**Risk**: ${status.proposal?.risk || 'unknown'}
+**Backup**: ${status.backupPath || 'Not specified'}
+**Rollback Deadline**: ${status.rollbackUntil || 'Not specified'}
+
+Once approved, you can proceed with migration in the next step.`;
+
+  const schema: ElicitationSchema = {
+    type: 'object',
+    properties: {
+      approved: {
+        type: 'boolean',
+        title: 'Approve this proposal?',
+        description: 'Once approved, you can execute migration in the next step',
+      },
+      comment: {
+        type: 'string',
+        title: 'Comment (optional)',
+        description: 'Please provide your reason for approval/rejection',
+      },
+    },
+    required: ['approved'],
+  };
+
   try {
-    if (serverInstance) {
-      const narrative = await generateApprovalNarrative(status);
-      
-      // Update status to approved
+    const elicitationResponse = await createElicitationRequest(elicitationMessage, schema);
+
+    if (elicitationResponse.action === 'accept' && elicitationResponse.content?.['approved']) {
+      // User approved
       const newStatus: OnboardingStatus = {
         ...status,
         status: 'approved',
@@ -657,35 +831,54 @@ async function handleApprove(): Promise<string> {
       };
       await saveOnboardingStatus(newStatus);
 
-      return narrative;
+      const userComment = elicitationResponse.content['comment'] as string | undefined;
+
+      let result = '✅ **Migration Plan Approved**\n\n';
+      result += '[User Decision]\n';
+      result += `- Approved: Yes\n`;
+      if (userComment) {
+        result += `- Comment: ${userComment}\n`;
+      }
+      result += `- Approved At: ${newStatus.decidedAt}\n\n`;
+      result += '[What This Means]\n';
+      result += '- Migration plan is approved but not executed yet\n';
+      result += '- This is a checkpoint before execution\n';
+      result += '- No files have been changed\n\n';
+      result += '[Next Step]\n';
+      result += 'Execute migration: onboarding({ action: "migrate" })\n\n';
+      result += '[Safety]\n';
+      result += `- Backup will be created at: ${status.backupPath}\n`;
+      result += `- Rollback available until: ${status.rollbackUntil}\n`;
+
+      return result;
+    } else if (elicitationResponse.action === 'accept' && !elicitationResponse.content?.['approved']) {
+      // User explicitly declined
+      const userComment = elicitationResponse.content?.['comment'] as string | undefined;
+
+      let result = '⛔ **Migration Plan Declined**\n\n';
+      result += '[User Decision]\n';
+      result += `- Approved: No\n`;
+      if (userComment) {
+        result += `- Reason: ${userComment}\n`;
+      }
+      result += '\n[Status]\n';
+      result += '- Status remains: proposed\n';
+      result += '- No changes have been made\n\n';
+      result += '[Next Steps]\n';
+      result += '- Review the proposal again: onboarding({ action: "status" })\n';
+      result += '- Skip this migration: onboarding({ action: "skip" })\n';
+
+      return result;
+    } else if (elicitationResponse.action === 'decline') {
+      // User declined the elicitation process itself
+      return '⛔ **Approval Declined**\n\nYou declined the approval process.\n\nStatus remains: proposed\nNo changes have been made.';
+    } else {
+      // User canceled
+      return '⚠️ **Approval Canceled**\n\nYou canceled the approval process.\n\nStatus remains: proposed\nNo changes have been made.';
     }
   } catch (error) {
-    console.error('Sampling failed for approval, using fallback:', error);
+    return `❌ **Approval Failed**\n\nError: ${error instanceof Error ? error.message : String(error)}\n\nUser approval via MCP Elicitation is required for this operation.\nPlease ensure your MCP client supports elicitation.`;
   }
-
-  // Fallback to formatted output
-  const newStatus: OnboardingStatus = {
-    ...status,
-    status: 'approved',
-    decidedAt: new Date().toISOString(),
-  };
-  await saveOnboardingStatus(newStatus);
-
-  let result = '✅ **Migration Plan Approved**\n\n';
-  result += '[Status]\n';
-  result += `- Previous: ${status.status} → New: approved\n`;
-  result += `- Approved At: ${newStatus.decidedAt}\n\n`;
-  result += '[What This Means]\n';
-  result += '- Migration plan is approved but not executed yet\n';
-  result += '- This is a checkpoint before execution\n';
-  result += '- No files have been changed\n\n';
-  result += '[Next Step]\n';
-  result += 'Execute migration: onboarding({ action: "migrate" })\n\n';
-  result += '[Safety]\n';
-  result += `- Backup will be created at: ${status.backupPath}\n`;
-  result += `- Rollback available until: ${status.rollbackUntil}\n`;
-
-  return result;
 }
 
 /**
@@ -699,6 +892,68 @@ async function handleMigrate(): Promise<string> {
     return `⚠️ Cannot migrate: Status is '${status.status}', must be 'approved'.\n\nRun onboarding({ action: "approve" }) first.`;
   }
 
+  // Final confirmation via elicitation
+  const elicitationMessage = `⚠️ **Final Confirmation for Migration Execution**
+
+The following operations will be performed:
+
+1. Backup current instructions
+   → ${status.backupPath}
+
+2. Execute migration
+   → Instructions will be updated
+
+3. Rollback will be available
+   → Deadline: ${status.rollbackUntil}
+
+**This operation will modify existing files.**
+Are you sure you want to proceed?`;
+
+  const schema: ElicitationSchema = {
+    type: 'object',
+    properties: {
+      confirmed: {
+        type: 'boolean',
+        title: 'Execute migration?',
+        description: 'A backup will be created',
+      },
+      understood_risks: {
+        type: 'boolean',
+        title: 'I understand the changes',
+        description: 'I understand that existing instructions will be updated',
+      },
+    },
+    required: ['confirmed', 'understood_risks'],
+  };
+
+  let elicitationResponse: ElicitationResponse;
+  try {
+    elicitationResponse = await createElicitationRequest(elicitationMessage, schema);
+  } catch (error) {
+    return `❌ **Migration Failed**\n\nError: ${error instanceof Error ? error.message : String(error)}\n\nUser confirmation via MCP Elicitation is required before executing migration.`;
+  }
+
+  if (elicitationResponse.action !== 'accept' || 
+      !elicitationResponse.content?.['confirmed'] ||
+      !elicitationResponse.content?.['understood_risks']) {
+    let result = '⛔ **Migration Canceled**\n\n';
+    
+    if (elicitationResponse.action === 'decline') {
+      result += 'You declined the migration execution.\n';
+    } else if (elicitationResponse.action === 'cancel') {
+      result += 'You canceled the migration execution.\n';
+    } else {
+      result += 'Migration was not confirmed (both confirmations are required).\n';
+    }
+    
+    result += '\nStatus remains: approved\n';
+    result += 'No files have been changed.\n';
+    result += '\nYou can try again: onboarding({ action: "migrate" })';
+    
+    return result;
+  }
+
+  // User confirmed - proceed with migration
   const migrationSteps: string[] = [];
 
   try {
@@ -788,6 +1043,66 @@ async function handleRollback(): Promise<string> {
     }
   }
 
+  // Final confirmation via elicitation
+  const elicitationMessage = `🔄 **Rollback Confirmation**
+
+The following operations will be performed:
+
+1. Restore from backup
+   → ${status.backupPath}
+
+2. Current post-migration instructions will be lost
+
+3. Status will be reset to "analyzed"
+   → You will need to start from propose again
+
+**⚠️ Current changes will be lost.**
+Are you sure you want to proceed?`;
+
+  const schema: ElicitationSchema = {
+    type: 'object',
+    properties: {
+      confirmed: {
+        type: 'boolean',
+        title: 'Execute rollback?',
+        description: 'Current changes will be lost',
+      },
+      reason: {
+        type: 'string',
+        title: 'Reason for rollback (optional)',
+        description: 'Please explain why rollback is needed',
+      },
+    },
+    required: ['confirmed'],
+  };
+
+  let elicitationResponse: ElicitationResponse;
+  try {
+    elicitationResponse = await createElicitationRequest(elicitationMessage, schema);
+  } catch (error) {
+    return `❌ **Rollback Failed**\n\nError: ${error instanceof Error ? error.message : String(error)}\n\nUser confirmation via MCP Elicitation is required before rollback.`;
+  }
+
+  if (elicitationResponse.action !== 'accept' || !elicitationResponse.content?.['confirmed']) {
+    let result = '⛔ **Rollback Canceled**\n\n';
+    
+    if (elicitationResponse.action === 'decline') {
+      result += 'You declined the rollback operation.\n';
+    } else if (elicitationResponse.action === 'cancel') {
+      result += 'You canceled the rollback operation.\n';
+    } else {
+      result += 'Rollback was not confirmed.\n';
+    }
+    
+    result += '\nNo changes have been made.\n';
+    result += `Backup remains available at: ${status.backupPath}\n`;
+    result += `Rollback deadline: ${status.rollbackUntil}`;
+    
+    return result;
+  }
+
+  // User confirmed - proceed with rollback
+  const userReason = elicitationResponse.content['reason'] as string | undefined;
   const rollbackSteps: string[] = [];
 
   try {
@@ -821,7 +1136,11 @@ async function handleRollback(): Promise<string> {
 
     // Fallback output
     let result = '✅ **Rollback Complete**\n\n';
-    result += '[Rollback Steps]\n';
+    result += '[User Decision]\n';
+    if (userReason) {
+      result += `- Reason: ${userReason}\n`;
+    }
+    result += '\n[Rollback Steps]\n';
     rollbackSteps.forEach((step, i) => {
       result += `${i + 1}. ${step}\n`;
     });

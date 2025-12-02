@@ -1,0 +1,75 @@
+{
+  "intent": "analysis-narrative",
+  "timestamp": "2025-12-02T02:23:45.936Z",
+  "request": {
+    "prompt": "You are analyzing existing Copilot instructions for onboarding.\n\nAnalysis data:\n```json\n{\n  \"pattern\": \"structured\",\n  \"exists\": true,\n  \"structured\": {\n    \"sections\": [\n      {\n        \"heading\": \"Purpose\",\n        \"lineCount\": 2,\n        \"startLine\": 7,\n        \"content\": \"This root file now serves only as an index and meta overview. Detailed guidance has been moved into categorized Markdown files with frontmatter for dynamic loading.\"\n      },\n      {\n        \"heading\": \"Categories\",\n        \"lineCount\": 7,\n        \"startLine\": 10,\n        \"content\": \"- Conventions: `conventions/typescript.md`, `conventions/git-workflow.md`\\n- Architecture: `architecture/api-design.md`\\n- Patterns: `patterns/error-handling.md`, `patterns/testing.md`\\n- Phases: `phases/development.md`\\n- Tools: `tools/mcp-server-usage.md`\\n- Templates: `_templates/mcp-tools-usage.md`\"\n      },\n      {\n        \"heading\": \"Core Tools\",\n        \"lineCount\": 7,\n        \"startLine\": 18,\n        \"content\": \"| Tool | Purpose |\\n|------|---------|\\n| `change_context` | Switch active phase/focus |\\n| `project_context` | Persist new rules |\\n| `instructions_structure` | Modify instruction corpus |\\n| `onboarding` | Analyze / propose / migrate / rollback |\"\n      },\n      {\n        \"heading\": \"Required Sections\",\n        \"lineCount\": 4,\n        \"startLine\": 26,\n        \"content\": \"The system always includes:\\n- TypeScript Coding Conventions (`conventions/typescript.md`)\\n- MCP Instructions Server Usage Guide (`tools/mcp-server-usage.md`)\"\n      },\n      {\n        \"heading\": \"Migration Notes\",\n        \"lineCount\": 2,\n        \"startLine\": 31,\n        \"content\": \"Original inline content (Japanese mixed sections) has been extracted and translated for consistency. Each file now includes frontmatter enabling selective loading.\"\n      },\n      {\n        \"heading\": \"Next Steps\",\n        \"lineCount\": 4,\n        \"startLine\": 34,\n        \"content\": \"- Add new rules via creating categorized file with frontmatter.\\n- Update context using `change_context` when phase/focus shifts.\\n- Run onboarding `analyze` to validate after significant additions.\"\n      },\n      {\n        \"heading\": \"Frontmatter Template\",\n        \"lineCount\": 10,\n        \"startLine\": 39,\n        \"content\": \"```yaml\\n---\\ncategory: conventions\\ntags: [typescript, style]\\npriority: high\\nrequired: true\\nphases: [development, refactoring]\\n---\\n```\"\n      },\n      {\n        \"heading\": \"Rollback\",\n        \"lineCount\": 5,\n        \"startLine\": 50,\n        \"content\": \"A backup of the previous monolithic file was created during migration. Use onboarding rollback if needed within retention window.\\n\\n---\"\n      }\n    ],\n    \"compatible\": true\n  },\n  \"recommendation\": \"既存の指示書を検出しました。そのまま利用できます。\"\n}\n```\n\nGenerate a clear, human-friendly report explaining:\n1. What pattern was detected (clean/structured/unstructured/messy)\n2. Key findings and evidence\n3. Whether restricted mode is active\n4. Recommended next steps\n\nKeep the tone professional but accessible.",
+    "context": {
+      "analysis": {
+        "exists": true,
+        "pattern": "structured",
+        "structured": {
+          "sections": [
+            {
+              "heading": "Purpose",
+              "lineCount": 2,
+              "startLine": 7,
+              "content": "This root file now serves only as an index and meta overview. Detailed guidance has been moved into categorized Markdown files with frontmatter for dynamic loading."
+            },
+            {
+              "heading": "Categories",
+              "lineCount": 7,
+              "startLine": 10,
+              "content": "- Conventions: `conventions/typescript.md`, `conventions/git-workflow.md`\n- Architecture: `architecture/api-design.md`\n- Patterns: `patterns/error-handling.md`, `patterns/testing.md`\n- Phases: `phases/development.md`\n- Tools: `tools/mcp-server-usage.md`\n- Templates: `_templates/mcp-tools-usage.md`"
+            },
+            {
+              "heading": "Core Tools",
+              "lineCount": 7,
+              "startLine": 18,
+              "content": "| Tool | Purpose |\n|------|---------|\n| `change_context` | Switch active phase/focus |\n| `project_context` | Persist new rules |\n| `instructions_structure` | Modify instruction corpus |\n| `onboarding` | Analyze / propose / migrate / rollback |"
+            },
+            {
+              "heading": "Required Sections",
+              "lineCount": 4,
+              "startLine": 26,
+              "content": "The system always includes:\n- TypeScript Coding Conventions (`conventions/typescript.md`)\n- MCP Instructions Server Usage Guide (`tools/mcp-server-usage.md`)"
+            },
+            {
+              "heading": "Migration Notes",
+              "lineCount": 2,
+              "startLine": 31,
+              "content": "Original inline content (Japanese mixed sections) has been extracted and translated for consistency. Each file now includes frontmatter enabling selective loading."
+            },
+            {
+              "heading": "Next Steps",
+              "lineCount": 4,
+              "startLine": 34,
+              "content": "- Add new rules via creating categorized file with frontmatter.\n- Update context using `change_context` when phase/focus shifts.\n- Run onboarding `analyze` to validate after significant additions."
+            },
+            {
+              "heading": "Frontmatter Template",
+              "lineCount": 10,
+              "startLine": 39,
+              "content": "```yaml\n---\ncategory: conventions\ntags: [typescript, style]\npriority: high\nrequired: true\nphases: [development, refactoring]\n---\n```"
+            },
+            {
+              "heading": "Rollback",
+              "lineCount": 5,
+              "startLine": 50,
+              "content": "A backup of the previous monolithic file was created during migration. Use onboarding rollback if needed within retention window.\n\n---"
+            }
+          ],
+          "compatible": true
+        },
+        "recommendation": "既存の指示書を検出しました。そのまま利用できます。"
+      }
+    }
+  },
+  "response": {
+    "role": "assistant",
+    "content": {
+      "type": "text",
+      "text": "# Copilot Instructions Analysis Report\n\n## 📋 Pattern Detected: **Structured**\n\nYour Copilot instructions are well-organized and follow a clear, modular structure.\n\n---\n\n## 🔍 Key Findings\n\n### ✅ Strengths\n\n1. **Modular Architecture**\n   - Instructions split into categorized files (conventions, architecture, patterns, phases, tools, templates)\n   - Uses frontmatter for dynamic loading and selective inclusion\n   - Clear separation of concerns\n\n2. **Well-Documented Structure**\n   - 8 distinct sections covering purpose, categories, tools, and migration notes\n   - Includes a frontmatter template for consistency\n   - Documents core tools (`change_context`, `project_context`, `instructions_structure`, `onboarding`)\n\n3. **Migration-Ready**\n   - Evolved from inline content to structured files\n   - Includes rollback capability with backup retention\n   - Tracks required sections (TypeScript conventions, MCP server usage)\n\n### 📊 Evidence\n\n- **Root file** serves as an index with 50+ lines of meta-documentation\n- **7 sections** provide comprehensive guidance:\n  - Purpose & overview\n  - Category mapping (6 categories)\n  - Tool reference table\n  - Required sections list\n  - Migration history\n  - Next steps\n  - Templates\n\n---\n\n## 🚦 Restricted Mode Status\n\n**Inactive** - Your instructions are compatible with the current system and can be used without restrictions.\n\n---\n\n## 🎯 Recommended Next Steps\n\n1. **Continue using** your existing structured approach - it's working well\n2. **Consider**:\n   - Running `onboarding analyze` periodically to validate consistency\n   - Using `change_context` when switching between development phases\n   - Creating new categorized files following the frontmatter template\n3. **Maintain** the modular structure as you add new guidance\n\nYour setup demonstrates best practices for managing Copilot instructions at scale! 🎉"
+    },
+    "model": "copilot/claude-sonnet-4.5"
+  }
+}

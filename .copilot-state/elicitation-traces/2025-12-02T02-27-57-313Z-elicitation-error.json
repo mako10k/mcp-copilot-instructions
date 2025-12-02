@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-12-02T02:27:57.313Z",
+  "action": "elicitation-error",
+  "message": "🔍 **Migration Proposal Approval**\n\nDo you approve this migration plan?\n\nNo proposal details available\n\n**Risk**: unknown\n**Backup**: .copilot-state/backup/copilot-instructions.md.bak-2025-12-02T02-23-59-867Z\n**Rollback Deadline**: 2025-12-09T02:23:59.867Z\n\nOnce approved, you can proceed with migration in the next step.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "approved": {
+        "type": "boolean",
+        "title": "Approve this proposal?",
+        "description": "Once approved, you can execute migration in the next step"
+      },
+      "comment": {
+        "type": "string",
+        "title": "Comment (optional)",
+        "description": "Please provide your reason for approval/rejection"
+      }
+    },
+    "required": [
+      "approved"
+    ]
+  },
+  "response": {
+    "action": "cancel",
+    "error": "v3Schema.safeParse is not a function"
+  },
+  "duration_ms": 13846
+}

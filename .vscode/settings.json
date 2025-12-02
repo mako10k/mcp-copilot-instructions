@@ -1,0 +1,7 @@
+{
+    "chat.mcp.serverSampling": {
+        "mcp-copilot-instructions/.vscode/mcp.json: copilot-instructions": {
+            "allowedDuringChat": true
+        }
+    }
+}

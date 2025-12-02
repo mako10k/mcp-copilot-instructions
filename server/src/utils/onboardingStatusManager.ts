@@ -45,6 +45,14 @@ export interface OnboardingStatus {
     locations: Array<{ line: number; text: string }>;
   }>;
 
+  proposal?: {
+    // Migration proposal data (set during 'propose' action)
+    title: string;
+    summary: string;
+    steps: string[];
+    risk: 'low' | 'medium' | 'high';
+  };
+
   backupPath?: string; // Backup file path
   canRollback: boolean; // Can rollback
   rollbackUntil?: string; // Rollback deadline

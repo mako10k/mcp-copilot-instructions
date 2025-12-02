@@ -1,0 +1,235 @@
+{
+  "intent": "proposal-draft",
+  "timestamp": "2025-12-02T02:18:45.035Z",
+  "request": {
+    "prompt": "You are creating a migration proposal for Copilot instructions onboarding.\n\nProposal data:\n```json\n{\n  \"pattern\": \"messy\",\n  \"proposal\": {\n    \"title\": \"Manual Fix Required\",\n    \"summary\": \"問題のある箇所が検出されました (1件)。自動移行は推奨されません。\",\n    \"steps\": [\n      \"1. 矛盾・重複・曖昧表現を手動で修正\",\n      \"2. 修正後に onboarding({ action: \\\"analyze\\\" }) を再実行\",\n      \"3. 互換性が確認できたら propose → migrate を検討\"\n    ],\n    \"risk\": \"high\",\n    \"backupFile\": \".copilot-state/backup/copilot-instructions.md.bak-2025-12-02T02-18-30-917Z\",\n    \"rollbackUntil\": \"2025-12-09T02:18:30.917Z\"\n  }\n}\n```\n\nGenerate a clear, human-friendly proposal explaining:\n1. The proposed migration plan title and summary\n2. Step-by-step migration process\n3. Risk level and why\n4. Backup strategy and rollback deadline\n5. Suggested sections (if applicable)\n6. Next actions (approve/migrate/skip)\n\nKeep the tone encouraging and explain technical details clearly.",
+    "context": {
+      "analysis": {
+        "exists": true,
+        "pattern": "messy",
+        "problems": [
+          {
+            "type": "contradiction",
+            "description": "矛盾: 命名規則（camelCase vs snake_case）",
+            "locations": [
+              {
+                "line": 83,
+                "text": "- **変数/関数**: camelCase（例: `getUserData`, `totalCount`）"
+              },
+              {
+                "line": 85,
+                "text": "- **定数**: UPPER_SNAKE_CASE（例: `MAX_RETRY_COUNT`）"
+              }
+            ]
+          }
+        ],
+        "structured": {
+          "sections": [
+            {
+              "heading": "meta: ツール活用ガイド",
+              "lineCount": 62,
+              "startLine": 7,
+              "content": "このMCPサーバは、指示書の外部記憶と動的生成を担います。以下のツールを適切に活用してください。\n\n### 開発状態の管理\n\n開発フェーズや作業内容が変わる場合、必ず `change_context` ツールで状態を更新してください。\n\n**使用タイミング**:\n- フェーズ変更時（開発→テスト、テスト→デバッグ、など）\n- 作業フォーカスの変更時（API実装→認証実装、など）\n\n**効果**: 状態変更後、この指示書は自動的に再生成され、現在のフェーズに適した指示が優先されます。\n\n### 開発ルールの登録\n\nユーザーから新しい規約・ルール・制約の指示を受けた場合、その場限りの対応ではなく、必ず `project_context` に永続化してください。\n\n**登録前の確認**:\n1. 既存ルールを検索（`project_context read`）\n2. 矛盾がないか確認\n3. 矛盾がある場合、ユーザーに確認を求める\n\n**重要**: 一度登録したルールは、以降すべてのセッションで参照されます。散逸を防ぐため、必ず登録してください。\n\n### 指示書の自己認識\n\n`instructions_structure` ツールは、**この指示書自体**を変更するツールです。使用時は、以下を明示してください。\n\n**注意事項**:\n- update/delete/insert実行時は、変更内容を明示\n- 「この指示書が変更されます」と警告\n- 外部変更がある場合、競合検出機能（`detect-conflicts`）が自動作動\n\n### 既存ルールとの整合性確認\n\n新しい指示を受けた際、既存の `project_context` と矛盾しないか必ず確認してください。\n\n**確認手順**:\n1. 関連カテゴリを検索（`project_context read`）\n2. 矛盾を検出した場合、ユーザーに選択肢を提示\n3. ユーザーの選択に従って、既存ルールを更新または維持\n\n### 既存プロジェクトへの導入\n\n初回実行時、または既存の `copilot-instructions.md` がある場合、`onboarding` ツールで分析してください。\n\n**動作**:\n- 互換性がある場合: 自動的に通常モードで動作\n- 互換性がない場合: 機能制限モードで動作（読み取り専用）\n- マイグレーション提案を確認後、承認を得て実行\n\n---\n\n**現在: 開発フェーズ**\n- 新しい規約は `project_context` に即座に登録\n- コーディング規約の参照を優先\n\n**現在のフォーカス**:\n- **API関連**: `project_context` でAPI規約を確認\n\n---"
+            },
+            {
+              "heading": "conventions: conventions/typescript.md",
+              "lineCount": 4,
+              "startLine": 70,
+              "content": "# TypeScript コーディング規約"
+            },
+            {
+              "heading": "型安全性",
+              "lineCount": 5,
+              "startLine": 75,
+              "content": "- すべての関数に明示的な戻り値の型を指定\n- `any`型の使用は最小限に（やむを得ない場合のみ）\n- `unknown`型を活用して型安全性を保つ"
+            },
+            {
+              "heading": "命名規則",
+              "lineCount": 5,
+              "startLine": 81,
+              "content": "- **変数/関数**: camelCase（例: `getUserData`, `totalCount`）\n- **型/インターフェース**: PascalCase（例: `UserProfile`, `ApiResponse`）\n- **定数**: UPPER_SNAKE_CASE（例: `MAX_RETRY_COUNT`）"
+            },
+            {
+              "heading": "ファイル構成",
+              "lineCount": 20,
+              "startLine": 87,
+              "content": "```typescript\n// インポート順序\nimport { 標準ライブラリ } from 'node:fs';\nimport { サードパーティ } from 'express';\nimport { 内部モジュール } from '../utils';\n\n// 型定義\ninterface MyType { }\n\n// 定数\nconst CONSTANT = 'value';\n\n// 関数\nexport function myFunction(): ReturnType { }\n```\n\n\n---"
+            },
+            {
+              "heading": "tools: tools/mcp-server-usage.md",
+              "lineCount": 4,
+              "startLine": 108,
+              "content": "# MCP Copilot Instructions Server の使い方"
+            },
+            {
+              "heading": "基本コンセプト",
+              "lineCount": 3,
+              "startLine": 113,
+              "content": "このMCPサーバは、**LLMのアテンション分散問題を解決**するために、巨大な指示書データベースから**今必要な指示だけを動的に抽出**します。"
+            },
+            {
+              "heading": "主要ツール",
+              "lineCount": 25,
+              "startLine": 117,
+              "content": "### `change_context` - 開発文脈の変更\n\n現在の開発フェーズや焦点を変更すると、自動的に最適な指示書が生成されます。\n\n```typescript\n// 使用例: 開発フェーズに移行\nchange_context({\n  action: \"update\",\n  state: {\n    phase: \"development\",\n    focus: [\"API認証\", \"JWT\"],\n    priority: \"high\"\n  }\n})\n```\n\n### 利用可能なphase\n\n- `development`: 新機能開発\n- `refactoring`: コードリファクタリング\n- `testing`: テスト作成・修正\n- `debugging`: バグ修正\n- `documentation`: ドキュメント作成"
+            },
+            {
+              "heading": "動的指示書生成の仕組み",
+              "lineCount": 6,
+              "startLine": 143,
+              "content": "1. **change_context実行**: 開発文脈を設定\n2. **自動スコアリング**: 現在のphase/focusから関連指示を計算\n3. **指示書生成**: 必須指示 + 関連指示（最大10セクション）を抽出\n4. **LLMが集中**: 今必要な指示だけでアテンションを集中"
+            },
+            {
+              "heading": "必須指示（常に含まれる）",
+              "lineCount": 7,
+              "startLine": 150,
+              "content": "- この使い方ガイド（tools/mcp-server-usage.md）\n- TypeScript規約（conventions/typescript.md）\n\n\n---"
+            },
+            {
+              "heading": "architecture: architecture/api-design.md",
+              "lineCount": 4,
+              "startLine": 158,
+              "content": "# API設計の原則"
+            },
+            {
+              "heading": "RESTful設計",
+              "lineCount": 5,
+              "startLine": 163,
+              "content": "- リソース指向のURL設計\n- 適切なHTTPメソッド使用（GET/POST/PUT/DELETE）\n- ステータスコードの正しい使用"
+            },
+            {
+              "heading": "エンドポイント設計",
+              "lineCount": 9,
+              "startLine": 169,
+              "content": "```\nGET    /api/users       # ユーザー一覧\nGET    /api/users/:id   # ユーザー詳細\nPOST   /api/users       # ユーザー作成\nPUT    /api/users/:id   # ユーザー更新\nDELETE /api/users/:id   # ユーザー削除\n```"
+            },
+            {
+              "heading": "レスポンス形式",
+              "lineCount": 15,
+              "startLine": 179,
+              "content": "```typescript\n{\n  success: boolean;\n  data?: T;\n  error?: {\n    code: string;\n    message: string;\n  };\n}\n```\n\n\n---"
+            },
+            {
+              "heading": "patterns: patterns/error-handling.md",
+              "lineCount": 4,
+              "startLine": 195,
+              "content": "# エラーハンドリングパターン"
+            },
+            {
+              "heading": "Try-Catch の適切な使用",
+              "lineCount": 16,
+              "startLine": 200,
+              "content": "```typescript\nasync function fetchData(): Promise<Data> {\n  try {\n    const response = await api.get('/data');\n    return response.data;\n  } catch (error) {\n    if (error instanceof ApiError) {\n      console.error('API Error:', error.message);\n      throw new CustomError('データ取得失敗', error);\n    }\n    throw error;\n  }\n}\n```"
+            },
+            {
+              "heading": "カスタムエラークラス",
+              "lineCount": 17,
+              "startLine": 217,
+              "content": "```typescript\nclass CustomError extends Error {\n  constructor(\n    message: string,\n    public code: string,\n    public cause?: Error\n  ) {\n    super(message);\n    this.name = 'CustomError';\n  }\n}\n```\n\n\n---"
+            },
+            {
+              "heading": "_templates: _templates/mcp-tools-usage.md",
+              "lineCount": 6,
+              "startLine": 235,
+              "content": "# MCPツール利用テンプレート\n\nこのファイルは、プロジェクトで本MCPサーバを使う際の基本テンプレートです。"
+            },
+            {
+              "heading": "プロジェクト固有の設定",
+              "lineCount": 8,
+              "startLine": 242,
+              "content": "プロジェクトの特性に応じて、以下のカテゴリをカスタマイズ:\n\n- `architecture/`: プロジェクトのアーキテクチャパターン\n- `patterns/`: よく使う実装パターン\n- `conventions/`: チーム固有のコーディング規約\n- `phases/`: プロジェクト固有の開発フェーズ"
+            },
+            {
+              "heading": "フロントマター設定",
+              "lineCount": 16,
+              "startLine": 251,
+              "content": "各Markdownファイルには以下のフロントマターを追加:\n\n```yaml\n---\ncategory: カテゴリ名\ntags: [タグ1, タグ2]\npriority: high | medium | low\nrequired: true | false  # 常に含める場合はtrue\nphases: [development, refactoring, ...]\n---\n```\n\n\n---"
+            },
+            {
+              "heading": "patterns: patterns/testing.md",
+              "lineCount": 4,
+              "startLine": 268,
+              "content": "# テストパターン"
+            },
+            {
+              "heading": "ユニットテストの基本",
+              "lineCount": 13,
+              "startLine": 273,
+              "content": "```typescript\ndescribe('calculateSum', () => {\n  it('正の数の合計を計算', () => {\n    expect(calculateSum(2, 3)).toBe(5);\n  });\n\n  it('負の数を含む合計を計算', () => {\n    expect(calculateSum(-2, 3)).toBe(1);\n  });\n});\n```"
+            },
+            {
+              "heading": "モック",
+              "lineCount": 7,
+              "startLine": 287,
+              "content": "```typescript\nconst mockFn = jest.fn();\nmockFn.mockReturnValue(42);\nexpect(mockFn()).toBe(42);\n```"
+            },
+            {
+              "heading": "非同期テスト",
+              "lineCount": 11,
+              "startLine": 295,
+              "content": "```typescript\nit('非同期処理のテスト', async () => {\n  const data = await fetchData();\n  expect(data).toBeDefined();\n});\n```\n\n\n---"
+            },
+            {
+              "heading": "conventions: conventions/git-workflow.md",
+              "lineCount": 4,
+              "startLine": 307,
+              "content": "# Git ワークフロー"
+            },
+            {
+              "heading": "ブランチ戦略",
+              "lineCount": 6,
+              "startLine": 312,
+              "content": "- `main`: 本番環境\n- `feature/xxx`: 新機能開発\n- `fix/xxx`: バグ修正\n- `refactor/xxx`: リファクタリング"
+            },
+            {
+              "heading": "コミットメッセージ",
+              "lineCount": 17,
+              "startLine": 319,
+              "content": "```\n<type>: <subject>\n\n<body>\n```\n\n### Type\n- `feat`: 新機能\n- `fix`: バグ修正\n- `docs`: ドキュメント\n- `refactor`: リファクタリング\n- `test`: テスト追加\n\n\n---"
+            },
+            {
+              "heading": "phases: phases/development.md",
+              "lineCount": 4,
+              "startLine": 337,
+              "content": "# 開発フェーズの指示"
+            },
+            {
+              "heading": "新機能開発の流れ",
+              "lineCount": 6,
+              "startLine": 342,
+              "content": "1. **要件確認**: 実装する機能の仕様を明確化\n2. **設計**: インターフェース・データ構造を設計\n3. **実装**: TDD（テスト駆動開発）で進める\n4. **テスト**: ユニットテスト・統合テストを追加"
+            },
+            {
+              "heading": "実装時の注意点",
+              "lineCount": 10,
+              "startLine": 349,
+              "content": "- 小さなコミットで頻繁にコミット\n- 型安全性を最優先\n- エラーハンドリングを忘れずに\n- ドキュメントコメント（JSDoc）を追加\n\n\n---"
+            }
+          ],
+          "compatible": false
+        },
+        "recommendation": "矛盾や重複が検出されました。手動での整理をお勧めします。"
+      },
+      "proposalData": {
+        "title": "Manual Fix Required",
+        "summary": "問題のある箇所が検出されました (1件)。自動移行は推奨されません。",
+        "steps": [
+          "1. 矛盾・重複・曖昧表現を手動で修正",
+          "2. 修正後に onboarding({ action: \"analyze\" }) を再実行",
+          "3. 互換性が確認できたら propose → migrate を検討"
+        ],
+        "risk": "high",
+        "backupFile": ".copilot-state/backup/copilot-instructions.md.bak-2025-12-02T02-18-30-917Z",
+        "rollbackUntil": "2025-12-09T02:18:30.917Z"
+      }
+    }
+  },
+  "response": {
+    "role": "assistant",
+    "content": {
+      "type": "text",
+      "text": "# 🔧 Migration Proposal: Manual Fix Required\n\n## Overview\n**Risk Level:** 🔴 **High** - Manual intervention needed\n\nThe analysis has detected **1 issue** in your Copilot instructions that requires your attention before proceeding with automatic migration. This typically means there are contradictions, duplicates, or ambiguous expressions that could cause unexpected behavior.\n\n---\n\n## 📋 Proposed Migration Steps\n\nFollow these steps to safely migrate your instructions:\n\n1. **Manual Review & Fix**\n   - Examine the detected contradictions, duplicates, or unclear instructions\n   - Resolve conflicts and remove redundancies\n   - Clarify any ambiguous language\n\n2. **Re-analyze**\n   - After making fixes, run `onboarding({ action: \"analyze\" })` again\n   - Verify that issues have been resolved\n\n3. **Proceed with Migration**\n   - Once compatibility is confirmed, consider running:\n     - `onboarding({ action: \"propose\" })` for a new proposal\n     - `onboarding({ action: \"migrate\" })` to apply changes\n\n---\n\n## 🛡️ Safety & Backup\n\n**Backup Created:**\n```\n.copilot-state/backup/copilot-instructions.md.bak-2025-12-02T02-18-30-917Z\n```\n\n**Rollback Available Until:** December 9, 2025 at 02:18 UTC (7 days)\n\nYour original instructions are safely backed up. You can restore them anytime before the rollback deadline if needed.\n\n---\n\n## ⚠️ Why High Risk?\n\nAutomatic migration is **not recommended** because:\n- Conflicting instructions could lead to unpredictable AI behavior\n- Duplicate rules might cause confusion in which guidance takes precedence\n- Ambiguous expressions may be interpreted differently than intended\n\nManual review ensures your instructions remain clear and consistent.\n\n---\n\n## 🎯 Next Actions\n\n**Choose your path:**\n\n- **Review & Fix** (Recommended): Manually resolve the detected issues, then re-analyze\n- **Skip**: Keep current instructions unchanged (not recommended if issues affect functionality)\n- **Need Help?**: Review the analysis results to understand what needs fixing\n\n💡 **Tip:** Take your time with manual fixes. Clear, unambiguous instructions lead to better Copilot assistance!"
+    },
+    "model": "copilot/claude-sonnet-4.5"
+  }
+}
