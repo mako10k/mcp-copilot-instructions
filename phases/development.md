@@ -15,7 +15,7 @@ phases: [development]
 5. Documentation – Update README / inline JSDoc for public APIs.
 
 ## Implementation Notes
-- Commit frequently with focused diffs.
+- Commit frequently with focused diffs (see `conventions/git-workflow.md` for commit message format).
 - Maintain type safety; avoid implicit `any`.
 - Ensure proper error boundaries.
 - Keep functions small and composable.
