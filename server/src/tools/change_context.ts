@@ -63,6 +63,8 @@ async function saveContext(context: DevelopmentContext): Promise<void> {
   const workspaceRoot = getWorkspaceRoot(import.meta.url);
   const contextPath = path.join(workspaceRoot, '.copilot-state/context.json');
 
+  // Ensure directory exists
+  await fs.mkdir(path.dirname(contextPath), { recursive: true });
   await fs.writeFile(contextPath, JSON.stringify(context, null, 2), 'utf-8');
 }
 
@@ -87,11 +89,14 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
           success: false,
           error:
             '❌ Restricted Mode: This action is not available.\n\n' +
-            'Please complete onboarding or use in read-only mode.\n\n' +
-            '[Check Details]\n' +
+            'Existing .github/copilot-instructions.md detected.\n' +
+            'Please complete onboarding first to prevent unintended overwrites.\n\n' +
+            '[Check Compatibility]\n' +
+            'onboarding({ action: "analyze" })\n\n' +
+            '[View Current Status]\n' +
             'onboarding({ action: "status" })\n\n' +
-            '[Onboarding]\n' +
-            'onboarding({ action: "analyze" })',
+            '[Skip Onboarding (use at your own risk)]\n' +
+            'onboarding({ action: "skip" })',
         },
         null,
         2,

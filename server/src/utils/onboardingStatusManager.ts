@@ -101,15 +101,35 @@ export async function saveOnboardingStatus(
  * - status is 'analyzed' and pattern is 'unstructured' or 'messy'
  * - status is 'proposed' and not yet approved
  * - status is 'rejected'
+ * - .github/copilot-instructions.md exists but onboarding not started (CRITICAL)
  *
  * Not restricted mode conditions:
- * - status is 'not_started' (initial state)
+ * - status is 'not_started' AND no existing .github/copilot-instructions.md
  * - status is 'completed' or 'skipped'
  * - pattern is 'clean' or 'structured'
  */
 export async function isRestrictedMode(): Promise<boolean> {
   const status = await getOnboardingStatus();
-  return status.restrictedMode;
+  
+  // If explicit restrictedMode flag is set, honor it
+  if (status.restrictedMode) {
+    return true;
+  }
+  
+  // CRITICAL: If onboarding not started, check if .github/copilot-instructions.md exists
+  if (status.status === 'not_started') {
+    try {
+      const instructionsPath = path.join(process.cwd(), '.github/copilot-instructions.md');
+      await fs.access(instructionsPath);
+      // File exists! Must run onboarding first to prevent overwrite
+      return true;
+    } catch {
+      // File doesn't exist, safe to proceed
+      return false;
+    }
+  }
+  
+  return false;
 }
 
 /**
