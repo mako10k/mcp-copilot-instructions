@@ -87,7 +87,7 @@ export function setOnboardingServer(server: Server): void {
 
 /**
  * Create elicitation request for user approval
- * 
+ *
  * @param message - Message to display to the user
  * @param schema - JSON Schema defining the form structure
  * @returns Elicitation response with user's decision
@@ -95,12 +95,12 @@ export function setOnboardingServer(server: Server): void {
  */
 async function createElicitationRequest(
   message: string,
-  schema: ElicitationSchema
+  schema: ElicitationSchema,
 ): Promise<ElicitationResponse> {
   if (!serverInstance) {
     throw new Error(
       'Server instance not available for elicitation. ' +
-      'MCP Elicitation is required for user approval operations.'
+        'MCP Elicitation is required for user approval operations.',
     );
   }
 
@@ -117,7 +117,10 @@ async function createElicitationRequest(
       },
     };
 
-    const response = await serverInstance.request(requestPayload, ElicitResultSchema);
+    const response = await serverInstance.request(
+      requestPayload,
+      ElicitResultSchema,
+    );
     const duration = Date.now() - startTime;
 
     // Log elicitation trace
@@ -126,7 +129,7 @@ async function createElicitationRequest(
       message,
       schema,
       response,
-      duration
+      duration,
     );
 
     if (response && typeof response === 'object' && 'action' in response) {
@@ -143,8 +146,11 @@ async function createElicitationRequest(
       'elicitation-error',
       message,
       schema,
-      { action: 'cancel', error: error instanceof Error ? error.message : String(error) },
-      duration
+      {
+        action: 'cancel',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      duration,
     );
 
     throw error;
@@ -159,7 +165,7 @@ async function logElicitationTrace(
   message: string,
   schema: ElicitationSchema,
   response: unknown,
-  duration: number
+  duration: number,
 ): Promise<void> {
   try {
     const traceDir = '.copilot-state/elicitation-traces';
@@ -181,8 +187,8 @@ async function logElicitationTrace(
           duration_ms: duration,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } catch (error) {
     console.error('Failed to log elicitation trace:', error);
@@ -254,7 +260,10 @@ async function handleAnalyze(): Promise<string> {
       const narrative = await generateAnalysisNarrative(analysis);
       return narrative;
     } catch (error) {
-      console.error('Sampling failed, falling back to formatted output:', error);
+      console.error(
+        'Sampling failed, falling back to formatted output:',
+        error,
+      );
       // Fall through to formatAnalysisResult
     }
   }
@@ -389,7 +398,9 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
 /**
  * Generate human-friendly analysis narrative using MCP sampling
  */
-async function generateAnalysisNarrative(analysis: AnalysisResult): Promise<string> {
+async function generateAnalysisNarrative(
+  analysis: AnalysisResult,
+): Promise<string> {
   if (!serverInstance) {
     throw new Error('Server instance not available for sampling');
   }
@@ -404,7 +415,7 @@ async function generateAnalysisNarrative(analysis: AnalysisResult): Promise<stri
       recommendation: analysis.recommendation,
     },
     null,
-    2
+    2,
   );
 
   const prompt = `You are analyzing existing Copilot instructions for onboarding.
@@ -451,7 +462,9 @@ Keep the tone professional but accessible.`;
     },
   });
 
-  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  const content = Array.isArray(response.content)
+    ? response.content[0]
+    : response.content;
   if (content && content.type === 'text') {
     return content.text;
   }
@@ -471,7 +484,7 @@ async function generateProposalNarrative(
     risk: string;
     backupFile: string;
     rollbackUntil: string;
-  }
+  },
 ): Promise<string> {
   if (!serverInstance) {
     throw new Error('Server instance not available for sampling');
@@ -484,7 +497,7 @@ async function generateProposalNarrative(
       suggestedSections: analysis.unstructured?.suggestedSections?.slice(0, 5),
     },
     null,
-    2
+    2,
   );
 
   const prompt = `You are creating a migration proposal for Copilot instructions onboarding.
@@ -533,7 +546,9 @@ Keep the tone encouraging and explain technical details clearly.`;
     },
   });
 
-  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  const content = Array.isArray(response.content)
+    ? response.content[0]
+    : response.content;
   if (content && content.type === 'text') {
     return content.text;
   }
@@ -587,7 +602,8 @@ async function handlePropose(): Promise<string> {
 
     case 'unstructured':
       title = 'Structuring Proposal';
-      summary = '非構造化の指示書を、提案セクションに基づき安全に構造化します。';
+      summary =
+        '非構造化の指示書を、提案セクションに基づき安全に構造化します。';
       steps = [
         '1. 現在の .github/copilot-instructions.md をバックアップ',
         '2. 提案セクション（見出し + 本文）で新しい構造化ファイルを生成 (乾式: diff表示のみ)',
@@ -599,7 +615,7 @@ async function handlePropose(): Promise<string> {
 
     case 'messy':
       title = 'Manual Fix Required';
-      summary = `問題のある箇所が検出されました (${analysis.problems!.length}件)。自動移行は推奨されません。`; 
+      summary = `問題のある箇所が検出されました (${analysis.problems!.length}件)。自動移行は推奨されません。`;
       steps = [
         '1. 矛盾・重複・曖昧表現を手動で修正',
         '2. 修正後に onboarding({ action: "analyze" }) を再実行',
@@ -613,7 +629,8 @@ async function handlePropose(): Promise<string> {
   const newStatus: OnboardingStatus = {
     ...status,
     status: 'proposed',
-    restrictedMode: analysis.pattern !== 'clean' && analysis.pattern !== 'structured',
+    restrictedMode:
+      analysis.pattern !== 'clean' && analysis.pattern !== 'structured',
     backupPath: backupFile,
     canRollback: true,
     rollbackUntil,
@@ -635,7 +652,10 @@ async function handlePropose(): Promise<string> {
       const narrative = await generateProposalNarrative(analysis, proposalData);
       return narrative;
     } catch (error) {
-      console.error('Sampling failed, falling back to formatted output:', error);
+      console.error(
+        'Sampling failed, falling back to formatted output:',
+        error,
+      );
       // Fall through to manual formatting
     }
   }
@@ -801,7 +821,8 @@ Once approved, you can proceed with migration in the next step.`;
       approved: {
         type: 'boolean',
         title: 'Approve this proposal?',
-        description: 'Once approved, you can execute migration in the next step',
+        description:
+          'Once approved, you can execute migration in the next step',
       },
       comment: {
         type: 'string',
@@ -813,9 +834,15 @@ Once approved, you can proceed with migration in the next step.`;
   };
 
   try {
-    const elicitationResponse = await createElicitationRequest(elicitationMessage, schema);
+    const elicitationResponse = await createElicitationRequest(
+      elicitationMessage,
+      schema,
+    );
 
-    if (elicitationResponse.action === 'accept' && elicitationResponse.content?.['approved']) {
+    if (
+      elicitationResponse.action === 'accept' &&
+      elicitationResponse.content?.['approved']
+    ) {
       // User approved
       const newStatus: OnboardingStatus = {
         ...status,
@@ -824,7 +851,9 @@ Once approved, you can proceed with migration in the next step.`;
       };
       await saveOnboardingStatus(newStatus);
 
-      const userComment = elicitationResponse.content['comment'] as string | undefined;
+      const userComment = elicitationResponse.content['comment'] as
+        | string
+        | undefined;
 
       let result = '✅ **Migration Plan Approved**\n\n';
       result += '[User Decision]\n';
@@ -844,9 +873,14 @@ Once approved, you can proceed with migration in the next step.`;
       result += `- Rollback available until: ${status.rollbackUntil}\n`;
 
       return result;
-    } else if (elicitationResponse.action === 'accept' && !elicitationResponse.content?.['approved']) {
+    } else if (
+      elicitationResponse.action === 'accept' &&
+      !elicitationResponse.content?.['approved']
+    ) {
       // User explicitly declined
-      const userComment = elicitationResponse.content?.['comment'] as string | undefined;
+      const userComment = elicitationResponse.content?.['comment'] as
+        | string
+        | undefined;
 
       let result = '⛔ **Migration Plan Declined**\n\n';
       result += '[User Decision]\n';
@@ -858,7 +892,8 @@ Once approved, you can proceed with migration in the next step.`;
       result += '- Status remains: proposed\n';
       result += '- No changes have been made\n\n';
       result += '[Next Steps]\n';
-      result += '- Review the proposal again: onboarding({ action: "status" })\n';
+      result +=
+        '- Review the proposal again: onboarding({ action: "status" })\n';
       result += '- Skip this migration: onboarding({ action: "skip" })\n';
 
       return result;
@@ -921,28 +956,34 @@ Are you sure you want to proceed?`;
 
   let elicitationResponse: ElicitationResponse;
   try {
-    elicitationResponse = await createElicitationRequest(elicitationMessage, schema);
+    elicitationResponse = await createElicitationRequest(
+      elicitationMessage,
+      schema,
+    );
   } catch (error) {
     return `❌ **Migration Failed**\n\nError: ${error instanceof Error ? error.message : String(error)}\n\nUser confirmation via MCP Elicitation is required before executing migration.`;
   }
 
-  if (elicitationResponse.action !== 'accept' || 
-      !elicitationResponse.content?.['confirmed'] ||
-      !elicitationResponse.content?.['understood_risks']) {
+  if (
+    elicitationResponse.action !== 'accept' ||
+    !elicitationResponse.content?.['confirmed'] ||
+    !elicitationResponse.content?.['understood_risks']
+  ) {
     let result = '⛔ **Migration Canceled**\n\n';
-    
+
     if (elicitationResponse.action === 'decline') {
       result += 'You declined the migration execution.\n';
     } else if (elicitationResponse.action === 'cancel') {
       result += 'You canceled the migration execution.\n';
     } else {
-      result += 'Migration was not confirmed (both confirmations are required).\n';
+      result +=
+        'Migration was not confirmed (both confirmations are required).\n';
     }
-    
+
     result += '\nStatus remains: approved\n';
     result += 'No files have been changed.\n';
     result += '\nYou can try again: onboarding({ action: "migrate" })';
-    
+
     return result;
   }
 
@@ -964,7 +1005,9 @@ Are you sure you want to proceed?`;
 
     // Step 2: Read and validate current content
     const contentLength = currentContent?.length || 0;
-    migrationSteps.push(`✓ Read ${contentLength} characters from existing file`);
+    migrationSteps.push(
+      `✓ Read ${contentLength} characters from existing file`,
+    );
 
     // Step 3: For this implementation, we'll preserve content as-is
     // (Real implementation would transform based on pattern)
@@ -989,7 +1032,10 @@ Are you sure you want to proceed?`;
     // Try sampling for execution trace
     try {
       if (serverInstance) {
-        const narrative = await generateMigrationNarrative(migrationSteps, newStatus);
+        const narrative = await generateMigrationNarrative(
+          migrationSteps,
+          newStatus,
+        );
         return narrative;
       }
     } catch (error) {
@@ -1071,14 +1117,20 @@ Are you sure you want to proceed?`;
 
   let elicitationResponse: ElicitationResponse;
   try {
-    elicitationResponse = await createElicitationRequest(elicitationMessage, schema);
+    elicitationResponse = await createElicitationRequest(
+      elicitationMessage,
+      schema,
+    );
   } catch (error) {
     return `❌ **Rollback Failed**\n\nError: ${error instanceof Error ? error.message : String(error)}\n\nUser confirmation via MCP Elicitation is required before rollback.`;
   }
 
-  if (elicitationResponse.action !== 'accept' || !elicitationResponse.content?.['confirmed']) {
+  if (
+    elicitationResponse.action !== 'accept' ||
+    !elicitationResponse.content?.['confirmed']
+  ) {
     let result = '⛔ **Rollback Canceled**\n\n';
-    
+
     if (elicitationResponse.action === 'decline') {
       result += 'You declined the rollback operation.\n';
     } else if (elicitationResponse.action === 'cancel') {
@@ -1086,16 +1138,18 @@ Are you sure you want to proceed?`;
     } else {
       result += 'Rollback was not confirmed.\n';
     }
-    
+
     result += '\nNo changes have been made.\n';
     result += `Backup remains available at: ${status.backupPath}\n`;
     result += `Rollback deadline: ${status.rollbackUntil}`;
-    
+
     return result;
   }
 
   // User confirmed - proceed with rollback
-  const userReason = elicitationResponse.content['reason'] as string | undefined;
+  const userReason = elicitationResponse.content['reason'] as
+    | string
+    | undefined;
   const rollbackSteps: string[] = [];
 
   try {
@@ -1120,7 +1174,10 @@ Are you sure you want to proceed?`;
     // Try sampling for rollback confirmation
     try {
       if (serverInstance) {
-        const narrative = await generateRollbackNarrative(rollbackSteps, newStatus);
+        const narrative = await generateRollbackNarrative(
+          rollbackSteps,
+          newStatus,
+        );
         return narrative;
       }
     } catch (error) {
@@ -1157,7 +1214,9 @@ Are you sure you want to proceed?`;
  * @unused - Reserved for future enhancement
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function generateApprovalNarrative(status: OnboardingStatus): Promise<string> {
+async function generateApprovalNarrative(
+  status: OnboardingStatus,
+): Promise<string> {
   if (!serverInstance) {
     throw new Error('Server instance not available for sampling');
   }
@@ -1205,7 +1264,9 @@ Keep it concise and clear.`;
     },
   });
 
-  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  const content = Array.isArray(response.content)
+    ? response.content[0]
+    : response.content;
   if (content && content.type === 'text') {
     return content.text;
   }
@@ -1218,7 +1279,7 @@ Keep it concise and clear.`;
  */
 async function generateMigrationNarrative(
   steps: string[],
-  status: OnboardingStatus
+  status: OnboardingStatus,
 ): Promise<string> {
   if (!serverInstance) {
     throw new Error('Server instance not available for sampling');
@@ -1272,7 +1333,9 @@ Keep it concise and reassuring.`;
     },
   });
 
-  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  const content = Array.isArray(response.content)
+    ? response.content[0]
+    : response.content;
   if (content && content.type === 'text') {
     return content.text;
   }
@@ -1285,7 +1348,7 @@ Keep it concise and reassuring.`;
  */
 async function generateRollbackNarrative(
   steps: string[],
-  status: OnboardingStatus
+  status: OnboardingStatus,
 ): Promise<string> {
   if (!serverInstance) {
     throw new Error('Server instance not available for sampling');
@@ -1338,7 +1401,9 @@ Be supportive and clear.`;
     },
   });
 
-  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  const content = Array.isArray(response.content)
+    ? response.content[0]
+    : response.content;
   if (content && content.type === 'text') {
     return content.text;
   }

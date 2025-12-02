@@ -39,6 +39,7 @@ export function fetchUser(id: string): Promise<UserProfile> { /* ... */ }
 ## Error Handling Guidelines
 - Wrap external I/O in try/catch.
 - Throw domain-specific error classes instead of generic Error.
+- → See `patterns/error-handling.md` for detailed implementation patterns.
 
 ## Code Style Essentials
 - Use single quotes, except JSON.
@@ -60,3 +61,4 @@ export function fetchUser(id: string): Promise<UserProfile> { /* ... */ }
 ## Testing Notes
 - Export pure functions for ease of testing.
 - Avoid hidden side effects in module scope.
+- → See `patterns/testing.md` for comprehensive testing strategies.

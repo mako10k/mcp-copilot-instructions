@@ -16,10 +16,10 @@ export function getDirname(importMetaUrl: string): string {
 
 /**
  * Get workspace root (user's working directory)
- * 
+ *
  * For MCP server running as npm package, the workspace root is where the user
  * invokes the command (process.cwd()), NOT where the package is installed.
- * 
+ *
  * The importMetaUrl parameter is kept for backward compatibility but not used
  * in production. It's only used in tests when we need to resolve relative to
  * the test file location.

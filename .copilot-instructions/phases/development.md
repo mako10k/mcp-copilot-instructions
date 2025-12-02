@@ -17,7 +17,7 @@ phases: [development]
 
 ## Implementation Considerations
 
-- Commit frequently with small commits
+- Commit frequently with small commits (see `conventions/git-workflow.md` for commit message format)
 - Prioritize type safety
 - Don't forget error handling
 - Add documentation comments (JSDoc)

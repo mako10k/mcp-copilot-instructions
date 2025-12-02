@@ -4,6 +4,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { guidance } from './tools/guidance.js';
 import { projectContext } from './tools/project_context.js';
@@ -12,6 +16,8 @@ import { changeContext } from './tools/change_context.js';
 import { feedback } from './tools/feedback.js';
 import { onboarding, setOnboardingServer } from './tools/onboarding.js';
 import { handleGoalManagement } from './tools/goal_management.js';
+import { getAvailablePrompts, getPromptContent } from './prompts/index.js';
+import { getAvailableResources, readResource } from './resources/index.js';
 
 const server = new Server(
   {
@@ -21,6 +27,8 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      prompts: {},
+      resources: {},
     },
   },
 );
@@ -504,6 +512,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: true,
     };
   }
+});
+
+// List available prompts
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  const prompts = getAvailablePrompts();
+  return { prompts };
+});
+
+// Get specific prompt content
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  const messages = await getPromptContent(name, args);
+  return { messages };
+});
+
+// List available resources
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  const resources = getAvailableResources();
+  return { resources };
+});
+
+// Read specific resource
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+  const resource = await readResource(uri);
+  return {
+    contents: [resource],
+  };
 });
 
 // Start server

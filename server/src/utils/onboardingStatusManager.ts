@@ -118,16 +118,19 @@ export async function saveOnboardingStatus(
  */
 export async function isRestrictedMode(): Promise<boolean> {
   const status = await getOnboardingStatus();
-  
+
   // If explicit restrictedMode flag is set, honor it
   if (status.restrictedMode) {
     return true;
   }
-  
+
   // CRITICAL: If onboarding not started, check if .github/copilot-instructions.md exists
   if (status.status === 'not_started') {
     try {
-      const instructionsPath = path.join(process.cwd(), '.github/copilot-instructions.md');
+      const instructionsPath = path.join(
+        process.cwd(),
+        '.github/copilot-instructions.md',
+      );
       await fs.access(instructionsPath);
       // File exists! Must run onboarding first to prevent overwrite
       return true;
@@ -136,7 +139,7 @@ export async function isRestrictedMode(): Promise<boolean> {
       return false;
     }
   }
-  
+
   return false;
 }
 
