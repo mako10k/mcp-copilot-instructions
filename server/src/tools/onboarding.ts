@@ -246,10 +246,16 @@ async function handleAnalyze(): Promise<string> {
       analysis.pattern === 'messy' || analysis.pattern === 'unstructured',
   };
 
-  // Automatically set to completed for compatible patterns
-  if (analysis.pattern === 'clean' || analysis.pattern === 'structured') {
+  // For clean pattern (no existing instructions), can proceed immediately
+  if (analysis.pattern === 'clean') {
     newStatus.status = 'completed';
     newStatus.restrictedMode = false;
+  }
+
+  // For structured pattern, keep restrictedMode until user confirms no migration needed
+  // This prevents accidental overwrites even when instructions are compatible
+  if (analysis.pattern === 'structured') {
+    newStatus.restrictedMode = true; // Keep restricted until user confirms
   }
 
   await saveOnboardingStatus(newStatus);
@@ -320,9 +326,18 @@ function formatAnalysisResult(analysis: AnalysisResult): string {
         result += `   - ${s.lineCount} lines (from Line ${s.startLine})\n`;
       });
       result += '\n✓ Compatible with this MCP server.\n';
-      result += '✓ Operates in normal mode.\n\n';
+      result += '✓ No migration required.\n\n';
+      result += '⚠️ **Currently in restricted mode**\n';
+      result +=
+        'To prevent accidental overwrites, features that modify .github/copilot-instructions.md\n';
+      result += 'are restricted until you confirm compatibility.\n\n';
       result += '[Next Steps]\n';
-      result += 'Ready to use. All features are available.';
+      result +=
+        '1. Confirm no migration needed: onboarding({ action: "skip" })\n';
+      result += '   This will enable normal mode and all features.\n\n';
+      result +=
+        '2. Or, if you want to restructure: onboarding({ action: "propose" })\n';
+      result += '   This will create a migration proposal (Phase B).';
       break;
 
     case 'unstructured':

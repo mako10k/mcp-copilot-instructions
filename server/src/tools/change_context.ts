@@ -89,14 +89,27 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
           success: false,
           error:
             '❌ Restricted Mode: This action is not available.\n\n' +
-            'Existing .github/copilot-instructions.md detected.\n' +
-            'Please complete onboarding first to prevent unintended overwrites.\n\n' +
-            '[Check Compatibility]\n' +
-            'onboarding({ action: "analyze" })\n\n' +
-            '[View Current Status]\n' +
-            'onboarding({ action: "status" })\n\n' +
-            '[Skip Onboarding (use at your own risk)]\n' +
-            'onboarding({ action: "skip" })',
+            '⚠️  CRITICAL: Your .github/copilot-instructions.md has NOT been migrated yet.\n' +
+            'It is still in monolithic format (single file, not .copilot-instructions/ directory).\n\n' +
+            '🔥 DANGER: change_context OVERWRITES .github/copilot-instructions.md\n' +
+            'Using this tool now would DESTROY your original instructions completely.\n' +
+            'The file would be replaced with dynamically generated content.\n\n' +
+            '【Why This is Blocked】\n' +
+            '1. change_context generates instructions from .copilot-instructions/ directory\n' +
+            '2. Your instructions are NOT in that directory yet (still monolithic)\n' +
+            '3. Running this would replace your file with empty or minimal content\n\n' +
+            '【Required Steps】\n' +
+            '1. Analyze: onboarding({ action: "analyze" })\n' +
+            '   - Check if migration is needed\n' +
+            '2. View Status: onboarding({ action: "status" })\n' +
+            '   - Understand current pattern (clean/structured/unstructured/messy)\n' +
+            '3. Migrate or Skip:\n' +
+            '   - If structured: onboarding({ action: "propose" }) then approve\n' +
+            '   - If keeping monolithic: onboarding({ action: "skip" })\n' +
+            '     (WARNING: skip means you accept manual management)\n\n' +
+            '【After Migration】\n' +
+            'Once instructions are in .copilot-instructions/ directory, change_context\n' +
+            'will safely generate .github/copilot-instructions.md from structured sources.',
         },
         null,
         2,
