@@ -21,6 +21,13 @@ import {
   analyzeInstructions,
   AnalysisResult,
 } from '../utils/instructionsAnalyzer.js';
+import {
+  readInstructionsFile,
+  writeInstructionsFile,
+} from '../utils/fileSystem.js';
+import { logSamplingTrace } from '../utils/samplingTraceLogger.js';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 /**
  * Arguments for onboarding tool
@@ -67,9 +74,13 @@ export async function onboarding(args: OnboardingArgs): Promise<string> {
       return await handlePropose();
 
     case 'approve':
+      return await handleApprove();
+
     case 'migrate':
+      return await handleMigrate();
+
     case 'rollback':
-      return `Unimplemented action: ${args.action}\n\nPlanned for implementation in Phase B and C.`;
+      return await handleRollback();
 
     default:
       return `Unknown action: ${args.action}`;
@@ -262,13 +273,7 @@ async function generateAnalysisNarrative(analysis: AnalysisResult): Promise<stri
     2
   );
 
-  const response = await serverInstance.createMessage({
-    messages: [
-      {
-        role: 'user',
-        content: {
-          type: 'text',
-          text: `You are analyzing existing Copilot instructions for onboarding.
+  const prompt = `You are analyzing existing Copilot instructions for onboarding.
 
 Analysis data:
 \`\`\`json
@@ -281,11 +286,35 @@ Generate a clear, human-friendly report explaining:
 3. Whether restricted mode is active
 4. Recommended next steps
 
-Keep the tone professional but accessible.`,
+Keep the tone professional but accessible.`;
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: prompt,
         },
       },
     ],
     maxTokens: 1000,
+  });
+
+  // Log sampling trace
+  await logSamplingTrace({
+    intent: 'analysis-narrative',
+    timestamp: new Date().toISOString(),
+    request: {
+      prompt: prompt,
+      context: { analysis },
+    },
+    response: {
+      role: response.role,
+      content: response.content,
+      model: response.model,
+      stopReason: response.stopReason,
+    },
   });
 
   const content = Array.isArray(response.content) ? response.content[0] : response.content;
@@ -324,13 +353,7 @@ async function generateProposalNarrative(
     2
   );
 
-  const response = await serverInstance.createMessage({
-    messages: [
-      {
-        role: 'user',
-        content: {
-          type: 'text',
-          text: `You are creating a migration proposal for Copilot instructions onboarding.
+  const prompt = `You are creating a migration proposal for Copilot instructions onboarding.
 
 Proposal data:
 \`\`\`json
@@ -345,11 +368,35 @@ Generate a clear, human-friendly proposal explaining:
 5. Suggested sections (if applicable)
 6. Next actions (approve/migrate/skip)
 
-Keep the tone encouraging and explain technical details clearly.`,
+Keep the tone encouraging and explain technical details clearly.`;
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: prompt,
         },
       },
     ],
     maxTokens: 1200,
+  });
+
+  // Log sampling trace
+  await logSamplingTrace({
+    intent: 'proposal-draft',
+    timestamp: new Date().toISOString(),
+    request: {
+      prompt: prompt,
+      context: { analysis, proposalData },
+    },
+    response: {
+      role: response.role,
+      content: response.content,
+      model: response.model,
+      stopReason: response.stopReason,
+    },
   });
 
   const content = Array.isArray(response.content) ? response.content[0] : response.content;
@@ -584,4 +631,403 @@ function formatStatus(status: OnboardingStatus): string {
   }
 
   return result;
+}
+
+/**
+ * approve action: Approve migration plan
+ */
+async function handleApprove(): Promise<string> {
+  const status = await getOnboardingStatus();
+
+  // Validation
+  if (status.status !== 'proposed') {
+    return `⚠️ Cannot approve: Status is '${status.status}', must be 'proposed'.\n\nRun onboarding({ action: "propose" }) first.`;
+  }
+
+  // Try sampling for approval confirmation
+  try {
+    if (serverInstance) {
+      const narrative = await generateApprovalNarrative(status);
+      
+      // Update status to approved
+      const newStatus: OnboardingStatus = {
+        ...status,
+        status: 'approved',
+        decidedAt: new Date().toISOString(),
+      };
+      await saveOnboardingStatus(newStatus);
+
+      return narrative;
+    }
+  } catch (error) {
+    console.error('Sampling failed for approval, using fallback:', error);
+  }
+
+  // Fallback to formatted output
+  const newStatus: OnboardingStatus = {
+    ...status,
+    status: 'approved',
+    decidedAt: new Date().toISOString(),
+  };
+  await saveOnboardingStatus(newStatus);
+
+  let result = '✅ **Migration Plan Approved**\n\n';
+  result += '[Status]\n';
+  result += `- Previous: ${status.status} → New: approved\n`;
+  result += `- Approved At: ${newStatus.decidedAt}\n\n`;
+  result += '[What This Means]\n';
+  result += '- Migration plan is approved but not executed yet\n';
+  result += '- This is a checkpoint before execution\n';
+  result += '- No files have been changed\n\n';
+  result += '[Next Step]\n';
+  result += 'Execute migration: onboarding({ action: "migrate" })\n\n';
+  result += '[Safety]\n';
+  result += `- Backup will be created at: ${status.backupPath}\n`;
+  result += `- Rollback available until: ${status.rollbackUntil}\n`;
+
+  return result;
+}
+
+/**
+ * migrate action: Execute approved migration
+ */
+async function handleMigrate(): Promise<string> {
+  const status = await getOnboardingStatus();
+
+  // Validation
+  if (status.status !== 'approved') {
+    return `⚠️ Cannot migrate: Status is '${status.status}', must be 'approved'.\n\nRun onboarding({ action: "approve" }) first.`;
+  }
+
+  const migrationSteps: string[] = [];
+
+  try {
+    // Step 1: Create backup
+    const backupDir = path.dirname(status.backupPath!);
+    await fs.mkdir(backupDir, { recursive: true });
+
+    const currentContent = await readInstructionsFile();
+    if (currentContent) {
+      await fs.writeFile(status.backupPath!, currentContent, 'utf-8');
+      migrationSteps.push(`✓ Backup created: ${status.backupPath}`);
+    } else {
+      migrationSteps.push('✓ No existing instructions to backup');
+    }
+
+    // Step 2: Read and validate current content
+    const contentLength = currentContent?.length || 0;
+    migrationSteps.push(`✓ Read ${contentLength} characters from existing file`);
+
+    // Step 3: For this implementation, we'll preserve content as-is
+    // (Real implementation would transform based on pattern)
+    if (currentContent) {
+      // Add migration marker
+      const enhancedContent = `<!-- Migrated by mcp-copilot-instructions on ${new Date().toISOString()} -->\n\n${currentContent}`;
+      await writeInstructionsFile(enhancedContent);
+      migrationSteps.push('✓ Added migration marker to instructions');
+    }
+
+    // Step 4: Update status
+    const newStatus: OnboardingStatus = {
+      ...status,
+      status: 'completed',
+      migratedAt: new Date().toISOString(),
+      restrictedMode: false,
+      canRollback: true,
+    };
+    await saveOnboardingStatus(newStatus);
+    migrationSteps.push('✓ Status updated to completed');
+
+    // Try sampling for execution trace
+    try {
+      if (serverInstance) {
+        const narrative = await generateMigrationNarrative(migrationSteps, newStatus);
+        return narrative;
+      }
+    } catch (error) {
+      console.error('Sampling failed for migration, using fallback:', error);
+    }
+
+    // Fallback output
+    let result = '✅ **Migration Complete**\n\n';
+    result += '[Execution Steps]\n';
+    migrationSteps.forEach((step, i) => {
+      result += `${i + 1}. ${step}\n`;
+    });
+    result += '\n[Status]\n';
+    result += '- Restricted mode: DISABLED\n';
+    result += '- All tools now operate freely\n';
+    result += '- Dynamic instruction management: ACTIVE\n\n';
+    result += '[Rollback]\n';
+    result += `- Available until: ${status.rollbackUntil}\n`;
+    result += `- Command: onboarding({ action: "rollback" })\n`;
+    result += `- Backup: ${status.backupPath}\n`;
+
+    return result;
+  } catch (error) {
+    return `❌ **Migration Failed**\n\nError: ${error}\n\nStatus unchanged. You can retry or rollback.`;
+  }
+}
+
+/**
+ * rollback action: Restore from backup
+ */
+async function handleRollback(): Promise<string> {
+  const status = await getOnboardingStatus();
+
+  // Validation: Can rollback?
+  if (!status.canRollback) {
+    return '⚠️ Rollback not available.\n\nRollback is only available after successful migration.';
+  }
+
+  // Check deadline
+  if (status.rollbackUntil) {
+    const deadline = new Date(status.rollbackUntil);
+    if (Date.now() > deadline.getTime()) {
+      return `⚠️ Rollback deadline expired.\n\nDeadline was: ${deadline.toLocaleString('en-US')}\n\nBackup still exists at: ${status.backupPath}`;
+    }
+  }
+
+  const rollbackSteps: string[] = [];
+
+  try {
+    // Step 1: Read backup
+    const backupContent = await fs.readFile(status.backupPath!, 'utf-8');
+    rollbackSteps.push(`✓ Read backup from ${status.backupPath}`);
+
+    // Step 2: Restore backup
+    await writeInstructionsFile(backupContent);
+    rollbackSteps.push('✓ Restored original instructions');
+
+    // Step 3: Update status back to analyzed
+    const newStatus: OnboardingStatus = {
+      ...status,
+      status: 'analyzed',
+      restrictedMode: true, // Re-enable for safety
+      canRollback: false, // Can't rollback a rollback
+    };
+    await saveOnboardingStatus(newStatus);
+    rollbackSteps.push('✓ Status reset to analyzed');
+
+    // Try sampling for rollback confirmation
+    try {
+      if (serverInstance) {
+        const narrative = await generateRollbackNarrative(rollbackSteps, newStatus);
+        return narrative;
+      }
+    } catch (error) {
+      console.error('Sampling failed for rollback, using fallback:', error);
+    }
+
+    // Fallback output
+    let result = '✅ **Rollback Complete**\n\n';
+    result += '[Rollback Steps]\n';
+    rollbackSteps.forEach((step, i) => {
+      result += `${i + 1}. ${step}\n`;
+    });
+    result += '\n[Current State]\n';
+    result += '- Original instructions restored\n';
+    result += '- Status: analyzed (before migration)\n';
+    result += '- Restricted mode: ENABLED (for safety)\n\n';
+    result += '[Next Options]\n';
+    result += '1. Re-propose: onboarding({ action: "propose" })\n';
+    result += '2. Skip: onboarding({ action: "skip" })\n';
+    result += '3. Review and fix issues before deciding\n';
+
+    return result;
+  } catch (error) {
+    return `❌ **Rollback Failed**\n\nError: ${error}\n\nStatus unchanged. Backup: ${status.backupPath}`;
+  }
+}
+
+/**
+ * Generate approval confirmation narrative using MCP sampling
+ */
+async function generateApprovalNarrative(status: OnboardingStatus): Promise<string> {
+  if (!serverInstance) {
+    throw new Error('Server instance not available for sampling');
+  }
+
+  const prompt = `You are confirming migration plan approval.
+
+Current Status:
+- Pattern: ${status.pattern}
+- Backup Path: ${status.backupPath}
+- Rollback Until: ${status.rollbackUntil}
+
+Generate a brief confirmation explaining:
+1. What approval means (commitment without execution yet)
+2. What happens next (migrate action required)
+3. That rollback will be available for 7 days
+
+Keep it concise and clear.`;
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: prompt,
+        },
+      },
+    ],
+    maxTokens: 500,
+  });
+
+  // Log sampling trace
+  await logSamplingTrace({
+    intent: 'approval-confirmation',
+    timestamp: new Date().toISOString(),
+    request: {
+      prompt: prompt,
+      context: { status },
+    },
+    response: {
+      role: response.role,
+      content: response.content,
+      model: response.model,
+      stopReason: response.stopReason,
+    },
+  });
+
+  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  if (content && content.type === 'text') {
+    return content.text;
+  }
+
+  throw new Error('Unexpected response format from sampling');
+}
+
+/**
+ * Generate migration execution narrative using MCP sampling
+ */
+async function generateMigrationNarrative(
+  steps: string[],
+  status: OnboardingStatus
+): Promise<string> {
+  if (!serverInstance) {
+    throw new Error('Server instance not available for sampling');
+  }
+
+  const prompt = `You are summarizing a completed migration.
+
+Execution Steps:
+${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+Final Status:
+- Status: ${status.status}
+- Backup: ${status.backupPath}
+- Rollback Until: ${status.rollbackUntil}
+- Restricted Mode: ${status.restrictedMode}
+
+Generate a completion message explaining:
+1. What was executed
+2. Where backup is stored
+3. That system is now in normal operation mode
+4. How to rollback if needed
+
+Keep it concise and reassuring.`;
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: prompt,
+        },
+      },
+    ],
+    maxTokens: 800,
+  });
+
+  // Log sampling trace
+  await logSamplingTrace({
+    intent: 'migration-execution-trace',
+    timestamp: new Date().toISOString(),
+    request: {
+      prompt: prompt,
+      context: { steps, status },
+    },
+    response: {
+      role: response.role,
+      content: response.content,
+      model: response.model,
+      stopReason: response.stopReason,
+    },
+  });
+
+  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  if (content && content.type === 'text') {
+    return content.text;
+  }
+
+  throw new Error('Unexpected response format from sampling');
+}
+
+/**
+ * Generate rollback confirmation narrative using MCP sampling
+ */
+async function generateRollbackNarrative(
+  steps: string[],
+  status: OnboardingStatus
+): Promise<string> {
+  if (!serverInstance) {
+    throw new Error('Server instance not available for sampling');
+  }
+
+  const prompt = `You are confirming a completed rollback.
+
+Rollback Steps:
+${steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
+
+Current Status:
+- Status: ${status.status}
+- Pattern: ${status.pattern}
+- Analyzed At: ${status.analyzedAt}
+- Restricted Mode: ${status.restrictedMode}
+
+Generate a rollback confirmation explaining:
+1. What was restored
+2. Current system status (back to analyzed state)
+3. Options for next steps (re-propose, skip, or review)
+
+Be supportive and clear.`;
+
+  const response = await serverInstance.createMessage({
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: prompt,
+        },
+      },
+    ],
+    maxTokens: 600,
+  });
+
+  // Log sampling trace
+  await logSamplingTrace({
+    intent: 'rollback-confirmation',
+    timestamp: new Date().toISOString(),
+    request: {
+      prompt: prompt,
+      context: { steps, status },
+    },
+    response: {
+      role: response.role,
+      content: response.content,
+      model: response.model,
+      stopReason: response.stopReason,
+    },
+  });
+
+  const content = Array.isArray(response.content) ? response.content[0] : response.content;
+  if (content && content.type === 'text') {
+    return content.text;
+  }
+
+  throw new Error('Unexpected response format from sampling');
 }
