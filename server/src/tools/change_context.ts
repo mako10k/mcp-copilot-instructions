@@ -3,6 +3,7 @@ import * as path from 'path';
 import { getWorkspaceRoot } from '../utils/pathUtils.js';
 import {
   DevelopmentContext,
+  GenerationOptions,
   generateInstructions,
 } from '../utils/generateInstructions.js';
 import {
@@ -24,6 +25,8 @@ interface ChangeContextArgs {
     | 'cleanup-history';
   state?: Partial<DevelopmentContext>;
   autoRegenerate?: boolean;
+  // Generation mode
+  mode?: 'full' | 'relaxed' | 'normal' | 'strict';
   // For rollback
   timestamp?: string | number; // ISO timestamp or index (0 = latest)
   // For list-history
@@ -164,7 +167,10 @@ export async function changeContext(args: ChangeContextArgs): Promise<string> {
 
     if (autoRegenerate) {
       try {
-        regenerated = await generateInstructions(newContext);
+        const generationMode = args.mode || 'normal';
+        regenerated = await generateInstructions(newContext, {
+          mode: generationMode,
+        });
       } catch (error) {
         console.error('Failed to regenerate instructions:', error);
         regenerated = {
