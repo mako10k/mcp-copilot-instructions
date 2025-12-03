@@ -27,6 +27,11 @@ import {
   writeInstructionsFile,
 } from '../utils/fileSystem.js';
 import { logSamplingTrace } from '../utils/samplingTraceLogger.js';
+import {
+  DevelopmentContext,
+  generateInstructions,
+} from '../utils/generateInstructions.js';
+import { getWorkspaceRoot } from '../utils/pathUtils.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -41,7 +46,10 @@ interface OnboardingArgs {
     | 'approve'
     | 'migrate'
     | 'rollback'
-    | 'skip';
+    | 'skip'
+    | 'preview';
+  // For preview action
+  mode?: 'full' | 'relaxed' | 'normal' | 'strict';
   // Parameters for Phase B and C will be added later
 }
 
@@ -221,6 +229,9 @@ export async function onboarding(args: OnboardingArgs): Promise<string> {
 
     case 'rollback':
       return await handleRollback();
+
+    case 'preview':
+      return await handlePreview(args.mode || 'normal');
 
     default:
       return `Unknown action: ${args.action}`;
@@ -1081,6 +1092,70 @@ Are you sure you want to proceed?`;
 /**
  * rollback action: Restore from backup
  */
+/**
+ * preview action: Preview generated instructions with specified mode
+ */
+async function handlePreview(
+  mode: 'full' | 'relaxed' | 'normal' | 'strict',
+): Promise<string> {
+  // Validate mode
+  if (!['full', 'relaxed', 'normal', 'strict'].includes(mode)) {
+    return `Invalid mode: ${mode}\n\nValid modes: full, relaxed, normal, strict`;
+  }
+
+  // Load current context
+  const workspaceRoot = getWorkspaceRoot(import.meta.url);
+  const contextPath = path.join(workspaceRoot, '.copilot-state/context.json');
+
+  let currentContext: DevelopmentContext;
+  try {
+    const content = await fs.readFile(contextPath, 'utf-8');
+    currentContext = JSON.parse(content);
+  } catch {
+    // Default context
+    currentContext = {
+      phase: 'development',
+      focus: [],
+      priority: 'medium',
+      mode: 'normal',
+    };
+  }
+
+  // Generate with specified mode
+  try {
+    const result = await generateInstructions(currentContext, {
+      mode,
+      showExcluded: true,
+    });
+
+    let output = `✅ Preview generated (${mode} mode)\n\n`;
+    output += `📊 **Statistics**:\n`;
+    output += `  • Total sections: ${result.stats.total}\n`;
+    output += `  • Included: ${result.stats.included}\n`;
+    output += `  • Excluded: ${result.stats.excluded}\n\n`;
+
+    if (result.excludedSummary) {
+      output += result.excludedSummary + '\n';
+    }
+
+    output += `\n📝 Generated file: .github/copilot-instructions.md\n`;
+    output += `🔑 Hash: ${result.generatedHash}\n\n`;
+
+    output += `💡 **Try other modes**:\n`;
+    output += `  • full: Show all sections (no filtering)\n`;
+    output += `  • relaxed: Light filtering (~20 sections)\n`;
+    output += `  • normal: Balanced filtering (~10 sections)\n`;
+    output += `  • strict: Aggressive filtering (~5 sections)\n\n`;
+
+    output += `To switch mode during work:\n`;
+    output += `\`change_context({ action: "update", state: {...}, mode: "${mode}" })\``;
+
+    return output;
+  } catch (error) {
+    return `❌ Failed to generate preview:\n\n${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
 async function handleRollback(): Promise<string> {
   const status = await getOnboardingStatus();
 
